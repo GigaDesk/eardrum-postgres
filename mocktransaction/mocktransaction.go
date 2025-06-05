@@ -2,6 +2,8 @@ package mocktransaction
 
 import (
 	"time"
+
+	"github.com/GigaDesk/eardrum-postgres/mockpurchasedproduct"
 )
 
 var MultipleTransactionNodes = []MockTransaction{
@@ -36,5 +38,13 @@ var MultipleTransactionNodes = []MockTransaction{
 		TotalAmountInCents:      405,
 		BalanceBeforeInCents: 2305,
 		BalanceAfterInCents:  1900,
+	},
+}
+
+var MultipleNewTransactionNodes = []MockNewTransaction{
+	{
+		PurchasedProducts: mockpurchasedproduct.MultiplePurchasedProductNodes,
+		RegistrationNumber: "SCT-251-025/2022",
+		PINCode: "2046",
 	},
 }

@@ -1,19 +1,20 @@
 package mocktransaction
 
-import "time"
+import (
+	"time"
 
+	"github.com/GigaDesk/eardrum-interfaces/transaction"
+	"github.com/GigaDesk/eardrum-postgres/mockpurchasedproduct"
+)
 
 type MockTransaction struct {
-	Id          int64
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	TotalAmountInCents int64
+	Id                   int64
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+	TotalAmountInCents   int64
 	BalanceBeforeInCents int64
 	BalanceAfterInCents  int64
 }
-
-
-
 
 func (m MockTransaction) GetID() int64 {
 	return m.Id
@@ -36,3 +37,31 @@ func (m MockTransaction) GetBalanceBeforeInCents() int64 {
 func (m MockTransaction) GetBalanceAfterInCents() int64 {
 	return m.BalanceAfterInCents
 }
+
+type MockNewTransaction struct {
+	PurchasedProducts  []mockpurchasedproduct.Mockpurchasedproduct
+	RegistrationNumber string
+	PINCode            string
+}
+
+func (m MockNewTransaction) GetPurchasedProducts() []transaction.PurchasedProduct {
+
+	var purchasedproducts []transaction.PurchasedProduct
+
+	for _, p := range m.PurchasedProducts {
+		purchasedproducts = append(purchasedproducts, p)
+	}
+
+	return purchasedproducts
+}
+
+func (m MockNewTransaction) GetRegistrationNumber() string {
+
+	return m.RegistrationNumber
+}
+
+func (m MockNewTransaction) GetPinCode() string {
+
+	return m.PINCode
+}
+
