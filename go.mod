@@ -3,7 +3,7 @@ module github.com/GigaDesk/eardrum-postgres
 go 1.23.2
 
 require (
-	github.com/GigaDesk/eardrum-interfaces v1.0.6
+	github.com/GigaDesk/eardrum-interfaces v1.0.8
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.30.0
 )
