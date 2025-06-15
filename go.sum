@@ -1,5 +1,9 @@
 github.com/GigaDesk/eardrum-interfaces v1.0.6 h1:bz77RF8g2n7Sw4fj/gaObTdDtAuv++Ho3brPvtf3BfA=
 github.com/GigaDesk/eardrum-interfaces v1.0.6/go.mod h1:0S9WexmRQikEw+XbbRB1nfH92k/rbwyPFFCXzi9P0bE=
+github.com/GigaDesk/eardrum-interfaces v1.0.7 h1:6j6kjqBbVb2qjjbdsfx1RARJuFl2EwK+u9P54ShHSK4=
+github.com/GigaDesk/eardrum-interfaces v1.0.7/go.mod h1:0S9WexmRQikEw+XbbRB1nfH92k/rbwyPFFCXzi9P0bE=
+github.com/GigaDesk/eardrum-interfaces v1.0.8 h1:5fpknwkhd3UtPEIBOi2N50GpwKR2K14fjD+IWuhIqQw=
+github.com/GigaDesk/eardrum-interfaces v1.0.8/go.mod h1:0S9WexmRQikEw+XbbRB1nfH92k/rbwyPFFCXzi9P0bE=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
