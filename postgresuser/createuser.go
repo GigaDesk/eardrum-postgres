@@ -5,21 +5,21 @@ import (
 	"gorm.io/gorm"
 )
 
-// creates a user record
+// creates an unverified user record
 func CreateUser(s user.NewUser, Db *gorm.DB) (user.User, error) {
-	//create user data
+	//create an unverified user data
 
-	user := &User{
+	unverifieduser := &UnverifiedUser{
 		Name:               s.GetName(),
 		PhoneNumber:        s.GetPhoneNumber(),
 		Password:           s.GetPassword(),
 		AccountBalanceInCents: 0,
 	}
 
-	//create a user record in the database and return if operation succeeds
-	if err := Db.Create(user).Error; err != nil {
+	//create an unverified user record in the database and return if operation succeeds
+	if err := Db.Create(unverifieduser).Error; err != nil {
 		return nil, err
 	}
 
-	return user, nil
+	return unverifieduser, nil
 }
