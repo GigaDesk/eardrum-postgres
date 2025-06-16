@@ -6,7 +6,7 @@ import (
 )
 
 //create a shop record 
-func CreateShop(s shop.NewSchool, Db *gorm.DB) (shop.Shop, error) {
+func CreateShop(s shop.NewShop, Db *gorm.DB) (shop.Shop, error) {
 	//create shop data
 	shop := &Shop{
 		Name:        s.GetName(),
