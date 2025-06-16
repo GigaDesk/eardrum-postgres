@@ -3,29 +3,68 @@ package postgrestransaction
 import (
 	"errors"
 
+	"github.com/GigaDesk/eardrum-interfaces/shop"
+	"github.com/GigaDesk/eardrum-interfaces/user"
 	"github.com/GigaDesk/eardrum-interfaces/transaction"
 	"github.com/GigaDesk/eardrum-postgres/postgrespurchase"
-	"github.com/GigaDesk/eardrum-postgres/postgresstudent"
+	"github.com/GigaDesk/eardrum-postgres/postgresshop"
+	"github.com/GigaDesk/eardrum-postgres/postgresuser"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
-// creates a transaction record
-func CreateTransaction(t transaction.NewTransaction, checkpin func(hashedPIN string, PIN string) error, Db *gorm.DB) (transaction.Transaction, error) {
+// deposits a particular amount to a shop's account
+func AddToShopBalance(shopid int, amountInCents int64, Db *gorm.DB) (shop.Shop, error) {
 
-    var transaction *Transaction
+	var shop postgresshop.Shop
 
 	err := Db.Transaction(func(tx *gorm.DB) error {
-		var student postgresstudent.Student
 
-		// step 1: extract the student with registration number and lock
-		result := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("registration_number = ?", t.GetRegistrationNumber()).First(&student)
+		// step 1: extract the shop with the shopid and lock
+		result := tx.Clauses(clause.Locking{Strength: "UPDATE"}).First(&shop, shopid)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		// step 2: add
+
+		shop.AccountBalanceInCents += amountInCents
+
+		//step 3: save updates
+
+		result = tx.Save(&shop)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return shop, nil
+}
+
+// creates a transaction record
+func CreateTransaction(t transaction.NewTransaction, shopid int, checkpin func(hashedPIN string, PIN string) error, Db *gorm.DB) (transaction.Transaction, user.User, shop.Shop, error) {
+
+	var transaction *Transaction
+
+	var shop shop.Shop
+
+	var user *postgresuser.User
+
+	err := Db.Transaction(func(tx *gorm.DB) error {
+
+		// step 1: extract the user with phone number and lock
+		result := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("phone_number = ?", t.GetPhoneNumber()).First(&user)
 		if result.Error != nil {
 			return result.Error
 		}
 
 		// step 2: ensure that the provided PIN code is correct
-		if err := checkpin(student.PinCode, t.GetPinCode()); err != nil {
+		if err := checkpin(user.PinCode, t.GetPinCode()); err != nil {
 			return err
 		}
 
@@ -41,20 +80,17 @@ func CreateTransaction(t transaction.NewTransaction, checkpin func(hashedPIN str
 			total += amount
 		}
 
-		//step 4: check if the students balance is more than the total
+		//step 4: check if the user's balance is more than the total
 
-		if student.AccountBalanceInCents < int64(total) {
+		if user.AccountBalanceInCents < int64(total) {
 			return errors.New("insufficient balance to complete transaction")
 		}
 
 		//step 5: prepare transaction data
 		transaction = &Transaction{
-			TotalAmountInCents:   int64(total),
-			BalanceBeforeInCents: student.AccountBalanceInCents,
-			BalanceAfterInCents:  student.AccountBalanceInCents - int64(total),
+			TotalAmountInCents:     int64(total),
+			TransactionCostInCents: 0,
 		}
-
-		
 
 		//step 6: create a transaction record in the database
 		if err := Db.Create(transaction).Error; err != nil {
@@ -63,68 +99,31 @@ func CreateTransaction(t transaction.NewTransaction, checkpin func(hashedPIN str
 
 		// step 7: deduct
 
-		student.AccountBalanceInCents -= int64(total)
+		user.AccountBalanceInCents -= int64(total)
 
-		//step 8: save updates
+		//step 8: save updates to user
 
-		result = tx.Save(&student)
+		result = tx.Save(&user)
 		if result.Error != nil {
 			return result.Error
 		}
 
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
+		//step 9: Add to shop balance
+		s, err :=AddToShopBalance(shopid, int64(total), Db)
 
-	return transaction, nil
-}
-
-// creates a deposit transaction record
-func CreateDepositTransaction(registrationNumber string, amountInCents int64, Db *gorm.DB) (transaction.Transaction, error) {
-
-    var transaction *Transaction
-
-	err := Db.Transaction(func(tx *gorm.DB) error {
-		var student postgresstudent.Student
-
-		// step 1: extract the student with registration number and lock
-		result := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("registration_number = ?", registrationNumber).First(&student)
-		if result.Error != nil {
-			return result.Error
-		}
-
-		//step 2: prepare transaction data
-		transaction = &Transaction{
-			TotalAmountInCents:   amountInCents,
-			BalanceBeforeInCents: student.AccountBalanceInCents,
-			BalanceAfterInCents:  student.AccountBalanceInCents + amountInCents,
-		}
-
-		
-
-		//step 3: create a transaction record in the database
-		if err := Db.Create(transaction).Error; err != nil {
+		if err!=nil{
 			return err
 		}
 
-		// step 4: add
-
-		student.AccountBalanceInCents += amountInCents
-
-		//step 5: save updates
-
-		result = tx.Save(&student)
-		if result.Error != nil {
-			return result.Error
-		}
+		shop = s
 
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, nil, nil, err
 	}
 
-	return transaction, nil
+	return transaction, user, shop, nil
 }
+
+

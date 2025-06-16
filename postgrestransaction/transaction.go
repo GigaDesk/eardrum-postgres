@@ -9,8 +9,7 @@ import (
 type Transaction struct {
 	gorm.Model
     TotalAmountInCents int64
-	BalanceBeforeInCents int64
-	BalanceAfterInCents int64
+	TransactionCostInCents int64
 }
 
 
@@ -39,14 +38,9 @@ func (t Transaction) GetTotalAmountInCents() int64 {
 	return t.TotalAmountInCents
 }
 
-// Returns the balance before the transaction in cents
-func (t Transaction) GetBalanceBeforeInCents() int64 {
-	return t.BalanceBeforeInCents
-}
-
-// Returns the balance after the transaction in cents
-func (t Transaction) GetBalanceAfterInCents() int64 {
-	return t.BalanceAfterInCents
+// Returns the transaction cost in cents spent in the transaction
+func (t Transaction) GetTransactionCostInCents() int64 {
+	return t.TransactionCostInCents
 }
 
 
