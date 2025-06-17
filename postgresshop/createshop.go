@@ -20,7 +20,7 @@ func CreateShop(s shop.NewShop, Db *gorm.DB) (shop.Shop, error) {
 		return nil, errors.New("shop phone number already exists but is unverified")
 	}
 
-	if phonenumberexists.Unverified{
+	if phonenumberexists.Verified{
 		return nil, errors.New("shop phone number already exists")
 	}
 
