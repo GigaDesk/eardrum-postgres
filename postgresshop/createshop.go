@@ -1,12 +1,29 @@
 package postgresshop
 
 import (
+	"errors"
+
 	"github.com/GigaDesk/eardrum-interfaces/shop"
 	"gorm.io/gorm"
 )
 
-//create an unverified shop record 
+//create an unverified shop record
 func CreateShop(s shop.NewShop, Db *gorm.DB) (shop.Shop, error) {
+    //check if the phone number already exists
+	phonenumberexists, err := CheckShopPhoneNumber(Db, s.GetPhoneNumber())
+
+	if err!=nil{
+		return nil, errors.New("error checking new shop phonenumber existence")
+	}
+
+	if phonenumberexists.Unverified{
+		return nil, errors.New("shop phone number already exists but is unverified")
+	}
+
+	if phonenumberexists.Unverified{
+		return nil, errors.New("shop phone number already exists")
+	}
+
 	//create unverified shop data
 	unverifiedshop := &UnverifiedShop{
 		Name:        s.GetName(),
