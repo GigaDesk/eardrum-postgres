@@ -3,9 +3,10 @@ package postgrestransaction
 import (
 	"errors"
 
+	"github.com/GigaDesk/eardrum-interfaces/purchase"
 	"github.com/GigaDesk/eardrum-interfaces/shop"
-	"github.com/GigaDesk/eardrum-interfaces/user"
 	"github.com/GigaDesk/eardrum-interfaces/transaction"
+	"github.com/GigaDesk/eardrum-interfaces/user"
 	"github.com/GigaDesk/eardrum-postgres/postgrespurchase"
 	"github.com/GigaDesk/eardrum-postgres/postgresshop"
 	"github.com/GigaDesk/eardrum-postgres/postgresuser"
@@ -47,9 +48,11 @@ func AddToShopBalance(shopid int, amountInCents int64, Db *gorm.DB) (shop.Shop, 
 }
 
 // creates a transaction record
-func CreateTransaction(t transaction.NewTransaction, shopid int, checkpin func(hashedPIN string, PIN string) error, Db *gorm.DB) (transaction.Transaction, user.User, shop.Shop, error) {
+func CreateTransaction(t transaction.NewTransaction, shopid int, checkpin func(hashedPIN string, PIN string) error, Db *gorm.DB) (transaction.Transaction, user.User, shop.Shop, []purchase.Purchase, error) {
 
 	var transaction *Transaction
+
+	var purchases []purchase.Purchase
 
 	var shop shop.Shop
 
@@ -109,21 +112,27 @@ func CreateTransaction(t transaction.NewTransaction, shopid int, checkpin func(h
 		}
 
 		//step 9: Add to shop balance
-		s, err :=AddToShopBalance(shopid, int64(total), Db)
+		s, err := AddToShopBalance(shopid, int64(total), Db)
 
-		if err!=nil{
+		if err != nil {
 			return err
 		}
 
 		shop = s
 
+		for _, p := range t.GetPurchasedProducts() {
+			purchase, err := postgrespurchase.CreatePurchase(transaction, p, Db)
+			if err != nil {
+				return err
+			}
+			purchases = append(purchases, purchase)
+		}
+
 		return nil
 	})
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
-	return transaction, user, shop, nil
+	return transaction, user, shop, purchases, nil
 }
-
-
