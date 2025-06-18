@@ -40,7 +40,7 @@ func (m MockTransaction) GetBalanceAfterInCents() int64 {
 
 type MockNewTransaction struct {
 	PurchasedProducts  []mockpurchasedproduct.Mockpurchasedproduct
-	RegistrationNumber string
+	PhoneNumber string
 	PINCode            string
 }
 
@@ -55,9 +55,9 @@ func (m MockNewTransaction) GetPurchasedProducts() []transaction.PurchasedProduc
 	return purchasedproducts
 }
 
-func (m MockNewTransaction) GetRegistrationNumber() string {
+func (m MockNewTransaction) GetPhoneNumber() string {
 
-	return m.RegistrationNumber
+	return m.PhoneNumber
 }
 
 func (m MockNewTransaction) GetPinCode() string {

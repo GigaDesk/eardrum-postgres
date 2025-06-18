@@ -44,7 +44,7 @@ var MultipleTransactionNodes = []MockTransaction{
 var MultipleNewTransactionNodes = []MockNewTransaction{
 	{
 		PurchasedProducts: mockpurchasedproduct.MultiplePurchasedProductNodes,
-		RegistrationNumber: "SCT-251-025/2022",
-		PINCode: "2046",
+		PhoneNumber: "+254719226158",
+		PINCode: "2021",
 	},
 }
