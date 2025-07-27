@@ -19,17 +19,17 @@ func (c Category) GetID() int64 {
 
 // Returns the creation timestamp of the product category
 func (c Category) GetCreatedAt() time.Time {
-	return c.CreatedAt
+	return c.CreatedAt.UTC()
 }
 
 // Returns the update timestamp of the product category
 func (c Category) GetUpdatedAt() time.Time {
-	return c.UpdatedAt
+	return c.UpdatedAt.UTC()
 }
 
 // Returns the deletion timestamp of the product category
 func (c Category) GetDeletedAt() time.Time {
-	return c.DeletedAt.Time
+	return c.DeletedAt.Time.UTC()
 }
 
 // Returns the name of the product category

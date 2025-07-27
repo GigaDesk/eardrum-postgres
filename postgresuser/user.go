@@ -22,17 +22,17 @@ func (u User) GetID() int64 {
 
 // Returns the creation timestamp of the user
 func (u User) GetCreatedAt() time.Time {
-	return u.CreatedAt
+	return u.CreatedAt.UTC()
 }
 
 // Returns the update timestamp of the user
 func (u User) GetUpdatedAt() time.Time {
-	return u.UpdatedAt
+	return u.UpdatedAt.UTC()
 }
 
 // Returns the deletion timestamp of the user
 func (u User) GetDeletedAt() time.Time {
-	return u.DeletedAt.Time
+	return u.DeletedAt.Time.UTC()
 }
 
 // Returns the name of the user
@@ -77,17 +77,17 @@ func (u UnverifiedUser) GetID() int64 {
 
 // Returns the creation timestamp of the unverified user
 func (u UnverifiedUser) GetCreatedAt() time.Time {
-	return u.CreatedAt
+	return u.CreatedAt.UTC()
 }
 
 // Returns the update timestamp of the unverified user
 func (u UnverifiedUser) GetUpdatedAt() time.Time {
-	return u.UpdatedAt
+	return u.UpdatedAt.UTC()
 }
 
 // Returns the deletion timestamp of the unverified user
 func (u UnverifiedUser) GetDeletedAt() time.Time {
-	return u.DeletedAt.Time
+	return u.DeletedAt.Time.UTC()
 }
 
 // Returns the name of the unverified user

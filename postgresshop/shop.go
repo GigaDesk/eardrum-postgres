@@ -22,17 +22,17 @@ func (s Shop) GetID() int64 {
 
 // Returns the creation timestamp of the shop
 func (s Shop) GetCreatedAt() time.Time {
-	return s.CreatedAt
+	return s.CreatedAt.UTC()
 }
 
 // Returns the update timestamp of the shop
 func (s Shop) GetUpdatedAt() time.Time {
-	return s.UpdatedAt
+	return s.UpdatedAt.UTC()
 }
 
 // Returns the deletion timestamp of the shop
 func (s Shop) GetDeletedAt() time.Time {
-	return s.DeletedAt.Time
+	return s.DeletedAt.Time.UTC()
 }
 
 // Returns the name of the shop
@@ -76,17 +76,17 @@ func (s UnverifiedShop) GetID() int64 {
 
 // Returns the creation timestamp of the unverified shop
 func (s UnverifiedShop) GetCreatedAt() time.Time {
-	return s.CreatedAt
+	return s.CreatedAt.UTC()
 }
 
 // Returns the update timestamp of the unverified shop
 func (s UnverifiedShop) GetUpdatedAt() time.Time {
-	return s.UpdatedAt
+	return s.UpdatedAt.UTC()
 }
 
 // Returns the deletion timestamp of the unverified shop
 func (s UnverifiedShop) GetDeletedAt() time.Time {
-	return s.DeletedAt.Time
+	return s.DeletedAt.Time.UTC()
 }
 
 // Returns the name of the unverified shop

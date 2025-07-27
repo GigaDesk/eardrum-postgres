@@ -20,17 +20,17 @@ func (t Transaction) GetID() int64 {
 
 // Returns the creation timestamp of the transaction
 func (t Transaction) GetCreatedAt() time.Time {
-	return t.CreatedAt
+	return t.CreatedAt.UTC()
 }
 
 // Returns the update timestamp of the transaction
 func (t Transaction) GetUpdatedAt() time.Time {
-	return t.UpdatedAt
+	return t.UpdatedAt.UTC()
 }
 
 // Returns the deletion timestamp of the transaction
 func (t Transaction) GetDeletedAt() time.Time {
-	return t.DeletedAt.Time
+	return t.DeletedAt.Time.UTC()
 }
 
 // Returns the total amount in cents spent in the transaction
