@@ -6,33 +6,61 @@ import (
 )
 
 // Transforms an unverified shop record to a verified shop record
-func VerifyShop(phoneNumber string, Db *gorm.DB) (shop.Shop, error) {
-	//declare an unverified shop variable
-	var unverifiedshop *UnverifiedShop
+// This function uses named return variables 'verifiedShop' and 'err'
+func VerifyShop(phoneNumber string, Db *gorm.DB) (verifiedShop shop.Shop, err error) {
+    // Start a new transaction
+    tx := Db.Begin()
+    if tx.Error != nil {
+        // If the transaction can't start, we return the error immediately.
+        return nil, tx.Error
+    }
 
-	// Find the first unverified shop that matches the input phone number from the unverified shop table
-	if err := Db.Where("phone_number = ?", phoneNumber).First(&unverifiedshop).Error; err != nil {
-		return nil, err
-	}
+    // Defer a rollback that will only execute if an error occurred.
+    // This closure now correctly refers to the function's named return variable 'err'.
+    defer func() {
+        if err != nil {
+            tx.Rollback()
+        }
+    }()
 
-	// transform the unverified shop model into shop model and copy it
-	shop := &Shop{
-		Name:                  unverifiedshop.Name,
-		PhoneNumber:           unverifiedshop.PhoneNumber,
-		Password:              unverifiedshop.Password,
-		AccountBalanceInCents: unverifiedshop.AccountBalanceInCents,
-		PinCode:               unverifiedshop.PinCode,
-	}
+    var unverifiedshop *UnverifiedShop
 
-	// take the newly transformed and copied shop data and transfer it into the official verified shop table
-	if err := Db.Create(shop).Error; err != nil {
-		return nil, err
-	}
+    // Find the unverified shop within the transaction.
+    // Use '=' to assign the error to the named return variable 'err'.
+    if err = tx.Where("phone_number = ?", phoneNumber).First(&unverifiedshop).Error; err != nil {
+        // The defer will handle the rollback before this return.
+        return
+    }
 
-	// delete the unverified shop from the unverified shop table
-	if err := Db.Delete(unverifiedshop).Error; err != nil {
-		return nil, err
-	}
+    // transform the unverified shop model into a shop model
+    verifiedShop = &Shop{
+        Name:                  unverifiedshop.Name,
+        PhoneNumber:           unverifiedshop.PhoneNumber,
+        Password:              unverifiedshop.Password,
+        AccountBalanceInCents: unverifiedshop.AccountBalanceInCents,
+        PinCode:               unverifiedshop.PinCode,
+        MpesaNumber:           unverifiedshop.MpesaNumber,
+    }
 
-	return shop, nil
+    // Create the verified shop in the transaction.
+    // Use '=' to assign the error to the named return variable 'err'.
+    if err = tx.Create(verifiedShop).Error; err != nil {
+        return
+    }
+
+    // Delete the unverified shop in the transaction.
+    // Use '=' to assign the error to the named return variable 'err'.
+    if err = tx.Delete(unverifiedshop).Error; err != nil {
+        return
+    }
+
+    // Commit the transaction if all operations were successful.
+    // Use '=' to assign the error to the named return variable 'err'.
+    if err = tx.Commit().Error; err != nil {
+        return
+    }
+
+    // The function returns here. The defer closure runs and finds 'err' is nil,
+    // so it skips the rollback.
+    return
 }
