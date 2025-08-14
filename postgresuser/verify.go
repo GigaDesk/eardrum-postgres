@@ -1,38 +1,66 @@
 package postgresuser
 
 import (
-	"github.com/GigaDesk/eardrum-interfaces/user"
-	"gorm.io/gorm"
+    "github.com/GigaDesk/eardrum-interfaces/user"
+    "gorm.io/gorm"
 )
 
 // Transforms an unverified user record to a verified user record
-func VerifyUser(phoneNumber string, Db *gorm.DB) (user.User, error) {
-	//declare an unverified user variable
-	var unverifieduser *UnverifiedUser
+// This function uses named return variables 'verifiedUser' and 'err'
+func VerifyUser(phoneNumber string, Db *gorm.DB) (verifiedUser user.User, err error) {
+    // Start a new transaction
+    tx := Db.Begin()
+    if tx.Error != nil {
+        // If the transaction can't start, we return the error immediately.
+        return nil, tx.Error
+    }
 
-	// Find the first unverified user that matches the input phone number from the unverified user table
-	if err := Db.Where("phone_number = ?", phoneNumber).First(&unverifieduser).Error; err != nil {
-		return nil, err
-	}
+    // Defer a rollback that will only execute if an error occurred.
+    // This closure now correctly refers to the function's named return variable 'err'.
+    defer func() {
+        if err != nil {
+            tx.Rollback()
+        }
+    }()
 
-	// transform the unverified user model into user model and copy it
-	user := &User{
-		Name:                  unverifieduser.Name,
-		PhoneNumber:           unverifieduser.PhoneNumber,
-		Password:              unverifieduser.Password,
-		AccountBalanceInCents: unverifieduser.AccountBalanceInCents,
-		PinCode:               unverifieduser.PinCode,
-	}
+    var unverifieduser *UnverifiedUser
 
-	// take the newly transformed and copied user data and transfer it into the official verified user table
-	if err := Db.Create(user).Error; err != nil {
-		return nil, err
-	}
+    // Find the unverified user within the transaction.
+    // Use '=' to assign the error to the named return variable 'err'.
+    if err = tx.Where("phone_number = ?", phoneNumber).First(&unverifieduser).Error; err != nil {
+        // The defer will handle the rollback before this return.
+        return
+    }
 
-	// delete the unverified user from the unverified user table
-	if err := Db.Delete(unverifieduser).Error; err != nil {
-		return nil, err
-	}
+    // transform the unverified user model into a user model
+    verifiedUser = &User{
+        Name:                  unverifieduser.Name,
+        PhoneNumber:           unverifieduser.PhoneNumber,
+        Password:              unverifieduser.Password,
+        AccountBalanceInCents: unverifieduser.AccountBalanceInCents,
+        PinCode:               unverifieduser.PinCode,
+        MpesaNumber:           unverifieduser.MpesaNumber,
+    }
 
-	return user, nil
+    // Create the verified user in the transaction.
+    // Use '=' to assign the error to the named return variable 'err'.
+    if err = tx.Create(verifiedUser).Error; err != nil {
+        return
+    }
+
+    // Delete the unverified user in the transaction.
+    // Use '=' to assign the error to the named return variable 'err'.
+    if err = tx.Delete(unverifieduser).Error; err != nil {
+        return
+    }
+
+    // Commit the transaction if all operations were successful.
+    // Use '=' to assign the error to the named return variable 'err'.
+    if err = tx.Commit().Error; err != nil {
+        return
+    }
+
+    // The function returns here. The defer closure runs and finds 'err' is nil,
+    // so it skips the rollback.
+    return
 }
