@@ -1,4 +1,4 @@
-package postgresuser
+package user
 
 import (
 	"time"
@@ -8,11 +8,12 @@ import (
 
 type User struct {
 	gorm.Model
-	Name                  string    // Name of the user
-	PhoneNumber           string    // Phone number of the user
-	Password              string    // Security password of the user
-	AccountBalanceInCents int64     // The user's account balance in cents
-	PinCode               string    // The security PIN code of the user
+	Name                  string // Name of the user
+	PhoneNumber           string `gorm:"uniqueIndex"` // Phone number of the user
+	Password              string // Security password of the user
+	AccountBalanceInCents int64  // The user's account balance in cents
+	PinCode               string // The security PIN code of the user
+	MpesaNumber           string // The users m-pesa number used for withdrawals
 }
 
 // Returns the unique ID of the user
@@ -45,6 +46,11 @@ func (u User) GetPhoneNumber() string {
 	return u.PhoneNumber
 }
 
+// Returns the m-pesa number of the user used for withdrawals
+func (u User) GetMpesaNumber() string {
+	return u.PhoneNumber
+}
+
 // Returns the account balance in cents of the user
 func (u User) GetAccountBalanceInCents() int64 {
 	return u.AccountBalanceInCents
@@ -60,14 +66,14 @@ func (u User) GetPinCode() string {
 	return u.PinCode
 }
 
-
 type UnverifiedUser struct {
 	gorm.Model
-	Name                  string    // Name of the unverified user
-	PhoneNumber           string    // Phone number of the unverified user
-	Password              string    // Security password of the unverified user
-	AccountBalanceInCents int64     // The unverified user's account balance in cents
-	PinCode               string    // The security PIN code of the unverified user
+	Name                  string // Name of the unverified user
+	PhoneNumber           string `gorm:"uniqueIndex"` // Phone number of the user
+	Password              string // Security password of the unverified user
+	AccountBalanceInCents int64  // The unverified user's account balance in cents
+	PinCode               string // The security PIN code of the unverified user
+	MpesaNumber           string // The unverified user's m-pesa number used for withdrawals
 }
 
 // Returns the unique ID of the unverified user
@@ -100,6 +106,11 @@ func (u UnverifiedUser) GetPhoneNumber() string {
 	return u.PhoneNumber
 }
 
+// Returns the m-pesa number of the unverified user used for withdrawals
+func (u UnverifiedUser) GetMpesaNumber() string {
+	return u.PhoneNumber
+}
+
 // Returns the account balance in cents of the unverified user
 func (u UnverifiedUser) GetAccountBalanceInCents() int64 {
 	return u.AccountBalanceInCents
@@ -116,6 +127,6 @@ func (u UnverifiedUser) GetPinCode() string {
 }
 
 type PhoneNumberExists struct {
-	Verified bool
+	Verified   bool
 	Unverified bool
 }

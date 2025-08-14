@@ -1,4 +1,4 @@
-package postgresuser
+package user
 
 import "gorm.io/gorm"
 
