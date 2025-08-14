@@ -30,6 +30,7 @@ func CreateShop(s shop.NewShop, Db *gorm.DB) (shop.Shop, error) {
 		PhoneNumber: s.GetPhoneNumber(),
 		Password:    s.GetPassword(),
 		AccountBalanceInCents: 0,
+		MpesaNumber: s.GetMpesaNumber(),
 	}
 
 	//create an unverified shop record in the database and return if operation succeeds

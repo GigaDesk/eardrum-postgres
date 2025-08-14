@@ -8,11 +8,12 @@ import (
 
 type Shop struct {
 	gorm.Model
-	Name                  string    // Name of the shop
-	PhoneNumber           string    // Phone number of the shop
-	Password              string    // Security password of the shop
-	AccountBalanceInCents int64     // The shop's account balance in cents
-	PinCode               string    // The security PIN code of the shop
+	Name                  string // Name of the shop
+	PhoneNumber           string `gorm:"uniqueIndex"` // Phone number of the user
+	Password              string // Security password of the shop
+	AccountBalanceInCents int64  // The shop's account balance in cents
+	PinCode               string // The security PIN code of the shop
+	MpesaNumber           string // The users m-pesa number used for withdrawals
 }
 
 // Returns the unique ID of the shop
@@ -45,6 +46,11 @@ func (s Shop) GetPhoneNumber() string {
 	return s.PhoneNumber
 }
 
+// Returns the m-pesa number of the shop
+func (s Shop) GetMpesaNumber() string {
+	return s.MpesaNumber
+}
+
 // Returns the account balance in cents of the shop
 func (s Shop) GetAccountBalanceInCents() int64 {
 	return s.AccountBalanceInCents
@@ -62,11 +68,12 @@ func (s Shop) GetPinCode() string {
 
 type UnverifiedShop struct {
 	gorm.Model
-	Name                  string    // Name of the unverified shop
-	PhoneNumber           string    // Phone number of the unverified shop
-	Password              string    // Security password of the unverified shop
-	AccountBalanceInCents int64     // The unverified shop's account balance in cents
-	PinCode               string    // The security PIN code of the unverified shop
+	Name                  string // Name of the unverified shop
+	PhoneNumber           string `gorm:"uniqueIndex"` // Phone number of the user
+	Password              string // Security password of the unverified shop
+	AccountBalanceInCents int64  // The unverified shop's account balance in cents
+	PinCode               string // The security PIN code of the unverified shop
+	MpesaNumber           string // The users m-pesa number used for withdrawals
 }
 
 // Returns the unique ID of the unverified shop
@@ -114,7 +121,12 @@ func (s UnverifiedShop) GetPinCode() string {
 	return s.PinCode
 }
 
+// Returns the m-pesa number of the unverified shop
+func (s UnverifiedShop) GetMpesaNumber() string {
+	return s.MpesaNumber
+}
+
 type PhoneNumberExists struct {
-	Verified bool
+	Verified   bool
 	Unverified bool
 }
