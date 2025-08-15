@@ -1,4 +1,4 @@
-package postgresproduct
+package product
 
 import (
 	"github.com/GigaDesk/eardrum-interfaces/product"

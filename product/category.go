@@ -1,4 +1,4 @@
-package postgresproduct
+package product
 
 import (
 	"time"
