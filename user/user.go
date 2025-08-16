@@ -6,14 +6,15 @@ import (
 	"gorm.io/gorm"
 )
 
+// User represents the customer model for the system.
 type User struct {
-	gorm.Model
-	Name                  string // Name of the user
-	PhoneNumber           string `gorm:"uniqueIndex"` // Phone number of the user
-	Password              string // Security password of the user
-	AccountBalanceInCents int64  // The user's account balance in cents
-	PinCode               string // The security PIN code of the user
-	MpesaNumber           string // The users m-pesa number used for withdrawals
+    gorm.Model
+    Name                  string `gorm:"not null"` // Name of the user
+    PhoneNumber           string `gorm:"uniqueIndex;not null"` // Phone number of the user
+    Password              string `gorm:"not null"` // The user's password. It should be stored as a secure hash.
+    AccountBalanceInCents uint   `gorm:"not null;default:0"`  // The user's account balance in cents
+    PinCode               string `gorm:"not null"` // The user's security PIN code. It should be stored as a secure hash.
+    MpesaNumber           string `gorm:"not null"` // The user's M-Pesa number used for withdrawals
 }
 
 // Returns the unique ID of the user
@@ -53,7 +54,7 @@ func (u User) GetMpesaNumber() string {
 
 // Returns the account balance in cents of the user
 func (u User) GetAccountBalanceInCents() int64 {
-	return u.AccountBalanceInCents
+	return int64(u.AccountBalanceInCents)
 }
 
 // Returns the security password of the user
@@ -66,14 +67,16 @@ func (u User) GetPinCode() string {
 	return u.PinCode
 }
 
+
+// UnverifiedUser represents the unverified customer model for the system.
 type UnverifiedUser struct {
-	gorm.Model
-	Name                  string // Name of the unverified user
-	PhoneNumber           string `gorm:"uniqueIndex"` // Phone number of the user
-	Password              string // Security password of the unverified user
-	AccountBalanceInCents int64  // The unverified user's account balance in cents
-	PinCode               string // The security PIN code of the unverified user
-	MpesaNumber           string // The unverified user's m-pesa number used for withdrawals
+    gorm.Model
+    Name                  string `gorm:"not null"` // Name of the user
+    PhoneNumber           string `gorm:"uniqueIndex;not null"` // Phone number of the user
+    Password              string `gorm:"not null"` // The user's password. It should be stored as a secure hash.
+    AccountBalanceInCents uint   `gorm:"not null;default:0"`  // The user's account balance in cents
+    PinCode               string `gorm:"not null"` // The user's security PIN code. It should be stored as a secure hash.
+    MpesaNumber           string `gorm:"not null"` // The user's M-Pesa number used for withdrawals
 }
 
 // Returns the unique ID of the unverified user
@@ -113,7 +116,7 @@ func (u UnverifiedUser) GetMpesaNumber() string {
 
 // Returns the account balance in cents of the unverified user
 func (u UnverifiedUser) GetAccountBalanceInCents() int64 {
-	return u.AccountBalanceInCents
+	return int64(u.AccountBalanceInCents)
 }
 
 // Returns the security password of the unverified user

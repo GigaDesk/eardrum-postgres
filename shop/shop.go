@@ -6,14 +6,15 @@ import (
 	"gorm.io/gorm"
 )
 
+// Shop represents the shop model for the system.
 type Shop struct {
-	gorm.Model
-	Name                  string // Name of the shop
-	PhoneNumber           string `gorm:"uniqueIndex"` // Phone number of the user
-	Password              string // Security password of the shop
-	AccountBalanceInCents int64  // The shop's account balance in cents
-	PinCode               string // The security PIN code of the shop
-	MpesaNumber           string // The users m-pesa number used for withdrawals
+    gorm.Model
+    Name                  string `gorm:"not null"` // Name of the shop
+    PhoneNumber           string `gorm:"uniqueIndex;not null"` // Phone number of the user
+    Password              string `gorm:"not null"` // The shop's password. It should be stored as a secure hash.
+    AccountBalanceInCents uint   `gorm:"not null;default:0"`  // The shop's account balance in cents
+    PinCode               string `gorm:"not null"` // The shop's security PIN code. It should be stored as a secure hash.
+    MpesaNumber           string `gorm:"not null"` // The users M-Pesa number used for withdrawals
 }
 
 // Returns the unique ID of the shop
@@ -53,7 +54,7 @@ func (s Shop) GetMpesaNumber() string {
 
 // Returns the account balance in cents of the shop
 func (s Shop) GetAccountBalanceInCents() int64 {
-	return s.AccountBalanceInCents
+	return int64(s.AccountBalanceInCents)
 }
 
 // Returns the security password of the shop
@@ -66,16 +67,16 @@ func (s Shop) GetPinCode() string {
 	return s.PinCode
 }
 
+// Shop represents the shop model for the system.
 type UnverifiedShop struct {
-	gorm.Model
-	Name                  string // Name of the unverified shop
-	PhoneNumber           string `gorm:"uniqueIndex"` // Phone number of the user
-	Password              string // Security password of the unverified shop
-	AccountBalanceInCents int64  // The unverified shop's account balance in cents
-	PinCode               string // The security PIN code of the unverified shop
-	MpesaNumber           string // The users m-pesa number used for withdrawals
+    gorm.Model
+    Name                  string `gorm:"not null"` // Name of the shop
+    PhoneNumber           string `gorm:"uniqueIndex;not null"` // Phone number of the user
+    Password              string `gorm:"not null"` // The shop's password. It should be stored as a secure hash.
+    AccountBalanceInCents uint   `gorm:"not null;default:0"`  // The shop's account balance in cents
+    PinCode               string `gorm:"not null"` // The shop's security PIN code. It should be stored as a secure hash.
+    MpesaNumber           string `gorm:"not null"` // The users M-Pesa number used for withdrawals
 }
-
 // Returns the unique ID of the unverified shop
 func (s UnverifiedShop) GetID() int64 {
 	return int64(s.ID)
@@ -108,7 +109,7 @@ func (s UnverifiedShop) GetPhoneNumber() string {
 
 // Returns the account balance in cents of the unverified shop
 func (s UnverifiedShop) GetAccountBalanceInCents() int64 {
-	return s.AccountBalanceInCents
+	return int64(s.AccountBalanceInCents)
 }
 
 // Returns the security password of the unverified shop
