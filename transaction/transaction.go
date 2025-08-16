@@ -1,4 +1,4 @@
-package postgrestransaction
+package transaction
 
 import (
 	"time"
