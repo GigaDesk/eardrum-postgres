@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/GigaDesk/eardrum-interfaces/shop"
+	"github.com/GigaDesk/eardrum-postgres/shop"
 	"gorm.io/gorm"
 )
 

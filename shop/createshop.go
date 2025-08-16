@@ -1,4 +1,4 @@
-package postgresshop
+package shop
 
 import (
 	"errors"

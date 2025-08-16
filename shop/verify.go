@@ -1,4 +1,4 @@
-package postgresshop
+package shop
 
 import (
 	"github.com/GigaDesk/eardrum-interfaces/shop"
