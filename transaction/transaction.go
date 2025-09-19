@@ -58,13 +58,13 @@ func (t Transaction) GetDeletedAt() time.Time {
 }
 
 // Returns the total amount in cents spent in the transaction
-func (t Transaction) GetTotalAmountInCents() int64 {
-	return int64(t.TotalAmountInCents)
+func (t Transaction) GetTotalAmountInCents() uint {
+	return t.TotalAmountInCents
 }
 
 // Returns the transaction cost in cents spent in the transaction
-func (t Transaction) GetTransactionCostInCents() int64 {
-	return int64(t.TransactionCostInCents)
+func (t Transaction) GetTransactionCostInCents() uint {
+	return t.TransactionCostInCents
 }
 
 // Returns the unique identifier of the shop the transaction was made to. 🏪
