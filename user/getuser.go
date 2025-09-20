@@ -1,4 +1,4 @@
-package postgresuser
+package user
 
 import (
 	"github.com/GigaDesk/eardrum-interfaces/user"

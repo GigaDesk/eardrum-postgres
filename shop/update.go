@@ -1,4 +1,4 @@
-package postgresshop
+package shop
 
 import (
 	"github.com/GigaDesk/eardrum-interfaces/shop"
@@ -26,7 +26,6 @@ func UpdatePassword(Db *gorm.DB, encryptedpassword string, id int) (shop.Shop, e
 	return shop, nil
 }
 
-
 func UpdatePinCode(Db *gorm.DB, encryptedpincode string, id int) (shop.Shop, error) {
 	var shop *Shop
 	//fetch the record to be updated from the database
@@ -36,6 +35,27 @@ func UpdatePinCode(Db *gorm.DB, encryptedpincode string, id int) (shop.Shop, err
 
 	// Update the records' attributes with `map`
 	if err := Db.Model(&shop).Updates(map[string]interface{}{"pin_code": encryptedpincode}).Error; err != nil {
+		return nil, err
+	}
+
+	//fetch the record again from the database, this time the updated version
+	if err := Db.First(&shop, id).Error; err != nil {
+		return nil, err
+	}
+
+	//return the updated record
+	return shop, nil
+}
+
+func UpdateMpesaNumber(Db *gorm.DB, new_mpesa_number string, id int) (shop.Shop, error) {
+	var shop *Shop
+	//fetch the record to be updated from the database
+	if err := Db.First(&shop, id).Error; err != nil {
+		return nil, err
+	}
+
+	// Update the records' attributes with `map`
+	if err := Db.Model(&shop).Updates(map[string]interface{}{"mpesa_number ": new_mpesa_number}).Error; err != nil {
 		return nil, err
 	}
 

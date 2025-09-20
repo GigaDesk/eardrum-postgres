@@ -1,16 +1,17 @@
-package postgresproduct
+package product
 
 import (
 	"github.com/GigaDesk/eardrum-interfaces/product"
 	"gorm.io/gorm"
 )
 
-//create a product record
-func CreateProduct(p product.NewProduct, Db *gorm.DB) (product.Product, error) {
+// create a product record
+func CreateProduct(p product.NewProduct, Db *gorm.DB, shop_id uint) (product.Product, error) {
 	//create product data
 	product := &Product{
-		Name:        p.GetName(),
-		PricePerUnitInCents: p.GetPricePerUnitInCents(),
+		Name:                p.GetName(),
+		PricePerUnitInCents: uint(p.GetPricePerUnitInCents()),
+		ShopID:              shop_id,
 	}
 
 	//create a shop record in the database and return if operation succeeds

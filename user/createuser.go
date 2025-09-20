@@ -1,9 +1,10 @@
-package postgresuser
+package user
 
 import (
 	"errors"
 
 	"github.com/GigaDesk/eardrum-interfaces/user"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -12,25 +13,29 @@ func CreateUser(s user.NewUser, Db *gorm.DB) (user.User, error) {
 	//check if the phone number already exists
 	phonenumberexists, err := CheckUserPhoneNumber(Db, s.GetPhoneNumber())
 
-	if err!=nil{
+	if err != nil {
 		return nil, errors.New("error checking new user phonenumber existence")
 	}
 
-	if phonenumberexists.Unverified{
+	if phonenumberexists.Unverified {
 		return nil, errors.New("user phone number already exists but is unverified")
 	}
 
-	if phonenumberexists.Verified{
+	if phonenumberexists.Verified {
 		return nil, errors.New("user phone number already exists")
 	}
 	//create an unverified user data
 
 	unverifieduser := &UnverifiedUser{
-		Name:               s.GetName(),
-		PhoneNumber:        s.GetPhoneNumber(),
-		Password:           s.GetPassword(),
+		Name:                  s.GetName(),
+		PhoneNumber:           s.GetPhoneNumber(),
+		Password:              s.GetPassword(),
 		AccountBalanceInCents: 0,
+		MpesaNumber:           s.GetMpesaNumber(),
 	}
+
+	// Generate a new UUID and assign it to the QrCode field
+    unverifieduser.QrCode = uuid.New()
 
 	//create an unverified user record in the database and return if operation succeeds
 	if err := Db.Create(unverifieduser).Error; err != nil {
