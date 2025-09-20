@@ -36,20 +36,32 @@ func GetTransactions(Db *gorm.DB) ([]transaction.Transaction, error) {
 
 // GetTransactionsForUser retrieves all transactions for a specific user.
 // It leverages the foreign key relationship to filter the results.
-func GetTransactionsForUser(db *gorm.DB, userID uint) ([]Transaction, error) {
+func GetTransactionsForUser(db *gorm.DB, userID uint) ([]transaction.Transaction, error) {
 	var transactions []Transaction
 	// GORM automatically filters on the UserID foreign key.
 	if err := db.Where("user_id = ?", userID).Find(&transactions).Error; err != nil {
 		return nil, err
 	}
-	return transactions, nil
+	var transactionslist []transaction.Transaction
+
+	for _, t := range transactions {
+		transactionslist = append(transactionslist, t)
+	}
+
+	return transactionslist, nil
 }
 
 // GetTransactionsForShop retrieves all transactions for a specific shop.
-func GetTransactionsForShop(db *gorm.DB, shopID uint) ([]Transaction, error) {
+func GetTransactionsForShop(db *gorm.DB, shopID uint) ([]transaction.Transaction, error) {
 	var transactions []Transaction
 	if err := db.Where("shop_id = ?", shopID).Find(&transactions).Error; err != nil {
 		return nil, err
 	}
-	return transactions, nil
+	var transactionslist []transaction.Transaction
+
+	for _, t := range transactions {
+		transactionslist = append(transactionslist, t)
+	}
+
+	return transactionslist, nil
 }
