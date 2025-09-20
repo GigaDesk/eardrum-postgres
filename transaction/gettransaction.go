@@ -21,7 +21,7 @@ func GetTransactions(Db *gorm.DB) ([]transaction.Transaction, error) {
 
 	var transactions []*Transaction
 
-	if err := Db.Find(&transactions).Error; err != nil {
+	if err := Db.Order("created_at desc").Find(&transactions).Error; err != nil {
 		return nil, err
 	}
 
@@ -39,7 +39,7 @@ func GetTransactions(Db *gorm.DB) ([]transaction.Transaction, error) {
 func GetTransactionsForUser(db *gorm.DB, userID uint) ([]transaction.Transaction, error) {
 	var transactions []Transaction
 	// GORM automatically filters on the UserID foreign key.
-	if err := db.Where("user_id = ?", userID).Find(&transactions).Error; err != nil {
+	if err := db.Where("user_id = ?", userID).Order("created_at desc").Find(&transactions).Error; err != nil {
 		return nil, err
 	}
 	var transactionslist []transaction.Transaction
@@ -54,7 +54,7 @@ func GetTransactionsForUser(db *gorm.DB, userID uint) ([]transaction.Transaction
 // GetTransactionsForShop retrieves all transactions for a specific shop.
 func GetTransactionsForShop(db *gorm.DB, shopID uint) ([]transaction.Transaction, error) {
 	var transactions []Transaction
-	if err := db.Where("shop_id = ?", shopID).Find(&transactions).Error; err != nil {
+	if err := db.Where("shop_id = ?", shopID).Order("created_at desc").Find(&transactions).Error; err != nil {
 		return nil, err
 	}
 	var transactionslist []transaction.Transaction

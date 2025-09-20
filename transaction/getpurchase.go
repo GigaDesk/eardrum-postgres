@@ -21,7 +21,7 @@ func GetPurchases(Db *gorm.DB) ([]purchase.Purchase, error) {
 
 	var purchases []*Purchase
 
-	if err := Db.Find(&purchases).Error; err != nil {
+	if err := Db.Order("created_at desc").Find(&purchases).Error; err != nil {
 		return nil, err
 	}
 
@@ -38,7 +38,7 @@ func GetPurchases(Db *gorm.DB) ([]purchase.Purchase, error) {
 // It uses the foreign key to filter the purchase records.
 func GetPurchasesForTransaction(db *gorm.DB, transactionID uint) ([]purchase.Purchase, error) {
 	var purchases []Purchase
-	if err := db.Where("transaction_id = ?", transactionID).Find(&purchases).Error; err != nil {
+	if err := db.Where("transaction_id = ?", transactionID).Order("created_at desc").Find(&purchases).Error; err != nil {
 		return nil, err
 	}
 
@@ -55,7 +55,7 @@ func GetPurchasesForTransaction(db *gorm.DB, transactionID uint) ([]purchase.Pur
 // It uses the foreign key to filter the purchase records.
 func GetPurchasesForProduct(db *gorm.DB, productID uint) ([]purchase.Purchase, error) {
 	var purchases []Purchase
-	if err := db.Where("product_id = ?", productID).Find(&purchases).Error; err != nil {
+	if err := db.Where("product_id = ?", productID).Order("created_at desc").Find(&purchases).Error; err != nil {
 		return nil, err
 	}
 	var purchaselist []purchase.Purchase
