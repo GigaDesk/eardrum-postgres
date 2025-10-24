@@ -13,12 +13,12 @@ import (
 // User represents the customer model for the system.
 type User struct {
     gorm.Model
-    Name                  string `gorm:"not null"` // Name of the user
+    UserName              string `gorm:"not null"` // UserName of the user
     PhoneNumber           string `gorm:"uniqueIndex;not null"` // Phone number of the user
     Password              string `gorm:"not null"` // The user's password. It should be stored as a secure hash.
     AccountBalanceInCents uint   `gorm:"not null;default:0"`  // The user's account balance in cents
-    PinCode               string `gorm:"not null"` // The user's security PIN code. It should be stored as a secure hash.
-    MpesaNumber           string `gorm:"not null"` // The user's M-Pesa number used for withdrawals
+    PinCode               *string   `gorm:""` // The user's security PIN code (can be NULL). Must be stored as a secure hash.
+    MpesaNumber           *string   `gorm:""` // The user's M-Pesa number used for withdrawals (can be NULL)
 	QrCode                uuid.UUID `gorm:"uniqueIndex;type:uuid"` // The user's unique Qr Code 
 }
 
@@ -42,9 +42,9 @@ func (u User) GetDeletedAt() time.Time {
 	return u.DeletedAt.Time.UTC()
 }
 
-// Returns the name of the user
-func (u User) GetName() string {
-	return u.Name
+// Returns the username of the user
+func (u User) GetUserName() string {
+	return u.UserName
 }
 
 // Returns the phone number of the user
@@ -53,8 +53,8 @@ func (u User) GetPhoneNumber() string {
 }
 
 // Returns the m-pesa number of the user used for withdrawals
-func (u User) GetMpesaNumber() string {
-	return u.PhoneNumber
+func (u User) GetMpesaNumber() *string {
+	return u.MpesaNumber
 }
 
 // Returns the account balance in cents of the user
@@ -68,7 +68,7 @@ func (u User) GetPassword() string {
 }
 
 // Returns the security PIN code of the user
-func (u User) GetPinCode() string {
+func (u User) GetPinCode() *string {
 	return u.PinCode
 }
 
@@ -100,12 +100,12 @@ func (u User) GetQrCodeBase64() string {
 // UnverifiedUser represents the unverified customer model for the system.
 type UnverifiedUser struct {
     gorm.Model
-    Name                  string `gorm:"not null"` // Name of the user
+    UserName              string `gorm:"not null"` // UserName of the user
     PhoneNumber           string `gorm:"uniqueIndex;not null"` // Phone number of the user
     Password              string `gorm:"not null"` // The user's password. It should be stored as a secure hash.
     AccountBalanceInCents uint   `gorm:"not null;default:0"`  // The user's account balance in cents
-    PinCode               string `gorm:"not null"` // The user's security PIN code. It should be stored as a secure hash.
-    MpesaNumber           string `gorm:"not null"` // The user's M-Pesa number used for withdrawals
+    PinCode               *string   `gorm:""` // The user's security PIN code (can be NULL). Must be stored as a secure hash.
+    MpesaNumber           *string   `gorm:""` // The user's M-Pesa number used for withdrawals (can be NULL)
 	QrCode                uuid.UUID `gorm:"uniqueIndex;type:uuid"` // The user's unique Qr Code 
 }
 
@@ -129,9 +129,9 @@ func (u UnverifiedUser) GetDeletedAt() time.Time {
 	return u.DeletedAt.Time.UTC()
 }
 
-// Returns the name of the unverified user
-func (u UnverifiedUser) GetName() string {
-	return u.Name
+// Returns the username of the unverified user
+func (u UnverifiedUser) GetUserName() string {
+	return u.UserName
 }
 
 // Returns the phone number of the unverified user
@@ -140,8 +140,8 @@ func (u UnverifiedUser) GetPhoneNumber() string {
 }
 
 // Returns the m-pesa number of the unverified user used for withdrawals
-func (u UnverifiedUser) GetMpesaNumber() string {
-	return u.PhoneNumber
+func (u UnverifiedUser) GetMpesaNumber() *string {
+	return u.MpesaNumber
 }
 
 // Returns the account balance in cents of the unverified user
@@ -155,7 +155,7 @@ func (u UnverifiedUser) GetPassword() string {
 }
 
 // Returns the security PIN code of the unverified user
-func (u UnverifiedUser) GetPinCode() string {
+func (u UnverifiedUser) GetPinCode() *string {
 	return u.PinCode
 }
 

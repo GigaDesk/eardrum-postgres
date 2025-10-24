@@ -1,44 +1,63 @@
 package user
 
 import (
-    "github.com/GigaDesk/eardrum-interfaces/user"
-    "github.com/google/uuid"
-    "gorm.io/gorm"
-    "gorm.io/gorm/clause"
+	"errors" // Standard Go errors package
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+	"github.com/GigaDesk/eardrum-interfaces/user"
+	"github.com/google/uuid"
 )
 
-// RegenerateQrCode generates a new UUID for the user's QR code, effectively invalidating the old one.
-// It uses GORM's built-in transaction function with a row-level lock for thread safety.
+// RegenerateQrCode generates a new UUID for the user's QR code.
 func RegenerateQrCode(Db *gorm.DB, id int) (user.User, error) {
-    var verifiedUser *User
+	var verifiedUser *User
 
-    err := Db.Transaction(func(tx *gorm.DB) error {
-        // Find the user within the transaction and add a lock.
-        // This ensures that no other process can modify this user's record
-        // until the transaction is committed or rolled back.
-        if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", id).First(&verifiedUser).Error; err != nil {
-            return err
-        }
+	err := Db.Transaction(func(tx *gorm.DB) error {
+		// 1. Find the user with a lock
+		// Use a local variable for the error to keep the main 'err' clean for the outer block.
+		if findErr := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ?", id).First(&verifiedUser).Error; findErr != nil {
+            
+            // Critical: If the user is not found during the lock/find step, 
+            // return the error so the outer block can handle it.
+			return findErr 
+		}
 
-        // Generate a new, cryptographically strong UUID.
-        newQrCode := uuid.New()
+		// 2. Generate new UUID
+		newQrCode := uuid.New()
 
-        // Update the user's record with the new UUID.
-        if err := tx.Model(&verifiedUser).Update("qr_code", newQrCode).Error; err != nil {
-            return err
-        }
+		// 3. Update the user's record with the new UUID.
+		if updateErr := tx.Model(&verifiedUser).Update("qr_code", newQrCode).Error; updateErr != nil {
+			
+            // Database failed to execute the update query.
+            return updateErr
+		}
 
-        // Update the local struct to reflect the new UUID
-        verifiedUser.QrCode = newQrCode
+		// Update the local struct to reflect the new UUID
+		verifiedUser.QrCode = newQrCode
 
-        // Return nil to commit the transaction
-        return nil
-    })
+		// Return nil to commit the transaction
+		return nil
+	})
 
-    if err != nil {
-        return nil, err
-    }
+    // --- Error Handling Block ---
+	if err != nil {
+		
+		// 1. Check for the known 'Not Found' error from the find/lock step
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Returns 404 Not Found
+			return nil, ErrUserNotFound("ID", id) 
+		}
 
-    // The transaction was successful.
-    return verifiedUser, nil
+		// 2. All other errors are internal database or concurrency issues
+        // This handles:
+        // - Connection errors during the transaction
+        // - Unhandled SQL errors during the FIND/UPDATE
+        // - Deadlock/concurrency errors (if GORM surfaces them here)
+        
+        // Returns 500 Internal Server Error
+		return nil, ErrDBPersistenceFailure(err)
+	}
+
+	// The transaction was successful.
+	return verifiedUser, nil
 }
