@@ -34,13 +34,13 @@ func GetCategories(Db *gorm.DB) ([]product.Category, error) {
 	return categorylist, nil
 }
 
-// GetCategoriesForShop retrieves all categories for a given shop ID.
+// GetCategoriesForMerchant retrieves all categories for a given merchant ID.
 // It returns a slice of Category and an error if the query fails.
-func GetCategoriesForShop(db *gorm.DB, shopID uint) ([]product.Category, error) {
+func GetCategoriesForMerchant(db *gorm.DB, merchantID uint) ([]product.Category, error) {
     var categories []Category
-    // Use the `Where` method to filter categories by their `ShopID`.
+    // Use the `Where` method to filter categories by their `MerchantID`.
     // The `Find` method will populate the `categories` slice with the results.
-    if err := db.Where("shop_id = ?", shopID).Find(&categories).Error; err != nil {
+    if err := db.Where("merchant_id = ?", merchantID).Find(&categories).Error; err != nil {
         return nil, err
     }
 
@@ -53,11 +53,11 @@ func GetCategoriesForShop(db *gorm.DB, shopID uint) ([]product.Category, error) 
     return categorylist, nil
 }
 
-// GetBlockedCategoriesByShop fetches all categories that are marked as blocked for a specific shop.
-func GetBlockedCategoriesByShop(db *gorm.DB, shopID uint) ([]Category, error) {
+// GetBlockedCategoriesByMerchant fetches all categories that are marked as blocked for a specific merchant.
+func GetBlockedCategoriesByMerchant(db *gorm.DB, merchantID uint) ([]Category, error) {
 	var categories []Category
-	// Find all categories where the shop ID matches and the 'blocked' flag is true.
-	if err := db.Where("shop_id = ? AND blocked = ?", shopID, true).Find(&categories).Error; err != nil {
+	// Find all categories where the merchant ID matches and the 'blocked' flag is true.
+	if err := db.Where("merchant_id = ? AND blocked = ?", merchantID, true).Find(&categories).Error; err != nil {
 		return nil, err
 	}
 	return categories, nil

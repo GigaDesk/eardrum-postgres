@@ -6,15 +6,15 @@ import (
 )
 
 // create a product record
-func CreateProduct(p product.NewProduct, Db *gorm.DB, shop_id uint) (product.Product, error) {
+func CreateProduct(p product.NewProduct, Db *gorm.DB, merchant_id uint) (product.Product, error) {
 	//create product data
 	product := &Product{
 		Name:                p.GetName(),
 		PricePerUnitInCents: uint(p.GetPricePerUnitInCents()),
-		ShopID:              shop_id,
+		MerchantID:              merchant_id,
 	}
 
-	//create a shop record in the database and return if operation succeeds
+	//create a product record in the database and return if operation succeeds
 	if err := Db.Create(product).Error; err != nil {
 		return nil, err
 	}

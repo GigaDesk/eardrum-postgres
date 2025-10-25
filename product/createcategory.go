@@ -6,12 +6,12 @@ import (
 )
 
 // create a category record
-func CreateCategory(c product.NewCategory, Db *gorm.DB, shop_id uint) (product.Category, error) {
+func CreateCategory(c product.NewCategory, Db *gorm.DB, merchant_id uint) (product.Category, error) {
 	//create category data
 	category := &Category{
 		Name:        c.GetName(),
 		Description: c.GetDescription(),
-		ShopID:      shop_id,
+		MerchantID:      merchant_id,
 	}
 
 	//create a category record in the database and return if operation succeeds

@@ -7,21 +7,21 @@ import (
 
 // DeleteCategory performs a hard delete on a category and sets the CategoryID to NULL for all
 // associated products in a single database transaction to ensure data integrity.
-// It now takes a shopID to validate ownership.
-func DeleteCategory(db *gorm.DB, shopID uint, categoryID uint) error {
+// It now takes a merchantID to validate ownership.
+func DeleteCategory(db *gorm.DB, merchantID uint, categoryID uint) error {
     // Start a new database transaction. All operations within the function passed to
     // db.Transaction will either be committed together or rolled back if an error occurs.
     err := db.Transaction(func(tx *gorm.DB) error {
-        // First, update all products that belong to the specified category AND shop.
+        // First, update all products that belong to the specified category AND merchant.
         // We set their CategoryID to NULL (represented by `nil` in Go) to unlink them.
-        if err := tx.Model(&Product{}).Where("category_id = ? AND shop_id = ?", categoryID, shopID).Update("category_id", nil).Error; err != nil {
+        if err := tx.Model(&Product{}).Where("category_id = ? AND merchant_id = ?", categoryID, merchantID).Update("category_id", nil).Error; err != nil {
             // If the update fails, return the error. This will cause the transaction to roll back.
             return err
         }
 
-        // Second, permanently delete the category record, ensuring it belongs to the correct shop.
+        // Second, permanently delete the category record, ensuring it belongs to the correct merchant.
         // The `Unscoped()` method bypasses GORM's soft-delete filter, performing a hard delete.
-        if err := tx.Unscoped().Where("id = ? AND shop_id = ?", categoryID, shopID).Delete(&Category{}).Error; err != nil {
+        if err := tx.Unscoped().Where("id = ? AND merchant_id = ?", categoryID, merchantID).Delete(&Category{}).Error; err != nil {
             // If the delete fails, return the error. This will cause the transaction to roll back.
             return err
         }
@@ -36,29 +36,29 @@ func DeleteCategory(db *gorm.DB, shopID uint, categoryID uint) error {
 
 // BlockCategoryWithProducts sets the 'blocked' flag to true for a category and all
 // products associated with it in a single, atomic transaction.
-func BlockCategoryWithProducts(db *gorm.DB, shopID, categoryID uint) error {
+func BlockCategoryWithProducts(db *gorm.DB, merchantID, categoryID uint) error {
 	// Start a transaction to ensure both updates happen together or fail together.
 	err := db.Transaction(func(tx *gorm.DB) error {
 		// First, block the category itself.
 		// Use `Model` on `Category` and `Where` to apply the update only to the
-		// specified category ID and shop ID.
+		// specified category ID and merchant ID.
 		result := tx.Model(&Category{}).
-			Where("id = ? AND shop_id = ?", categoryID, shopID).
+			Where("id = ? AND merchant_id = ?", categoryID, merchantID).
 			Update("blocked", true)
 
 		if result.Error != nil {
 			return result.Error
 		}
-		// Check if any rows were affected to ensure the category existed and belonged to the shop.
+		// Check if any rows were affected to ensure the category existed and belonged to the merchant.
 		if result.RowsAffected == 0 {
-			return errors.New("category not found or does not belong to the specified shop")
+			return errors.New("category not found or does not belong to the specified merchant")
 		}
 
 		// Second, block all products in that category.
 		// Use `Model` on `Product` and `Where` to apply the update to all products
-		// with the specified category ID and shop ID.
+		// with the specified category ID and merchant ID.
 		result = tx.Model(&Product{}).
-			Where("category_id = ? AND shop_id = ?", categoryID, shopID).
+			Where("category_id = ? AND merchant_id = ?", categoryID, merchantID).
 			Update("blocked", true)
 
 		if result.Error != nil {
@@ -75,26 +75,26 @@ func BlockCategoryWithProducts(db *gorm.DB, shopID, categoryID uint) error {
 // AddProductsToCategory updates an array of products to a specific category.
 // It sets the CategoryID for each product in the provided slice of productIDs.
 // The operation is performed within a transaction to ensure data integrity.
-func AddProductsToCategory(db *gorm.DB, shopID uint, categoryID uint, productIDs []uint) error {
+func AddProductsToCategory(db *gorm.DB, merchantID uint, categoryID uint, productIDs []uint) error {
     // Start a new database transaction.
     err := db.Transaction(func(tx *gorm.DB) error {
-        // First, check if the category exists AND belongs to the specified shop.
+        // First, check if the category exists AND belongs to the specified merchant.
         var category Category
-        if err := tx.Where("id = ? AND shop_id = ?", categoryID, shopID).First(&category).Error; err != nil {
-            // If the category is not found or does not belong to the shop, return the error.
+        if err := tx.Where("id = ? AND merchant_id = ?", categoryID, merchantID).First(&category).Error; err != nil {
+            // If the category is not found or does not belong to the merchant, return the error.
             return err
         }
 
-        // Next, check if all the products exist AND belong to the specified shop.
+        // Next, check if all the products exist AND belong to the specified merchant.
         var products []Product
-        if err := tx.Where("id IN ? AND shop_id = ?", productIDs, shopID).Find(&products).Error; err != nil {
+        if err := tx.Where("id IN ? AND merchant_id = ?", productIDs, merchantID).Find(&products).Error; err != nil {
             return err
         }
 
         // Check if the number of products found matches the number of product IDs provided.
-        // This validates that all products exist and belong to the correct shop.
+        // This validates that all products exist and belong to the correct merchant.
         if len(products) != len(productIDs) {
-            return errors.New("one or more products not found or do not belong to the specified shop")
+            return errors.New("one or more products not found or do not belong to the specified merchant")
         }
 
         // Use `Model` to specify the `Product` table and `Where` with `IN` to update all
@@ -114,11 +114,11 @@ func AddProductsToCategory(db *gorm.DB, shopID uint, categoryID uint, productIDs
 }
 
 
-func RemoveProductsFromCategory(db *gorm.DB, shopID uint, productIDs []uint) error {
+func RemoveProductsFromCategory(db *gorm.DB, merchantID uint, productIDs []uint) error {
 	// Update the 'CategoryID' field to nil (NULL in the database) for the specified products.
-	// We use the `shopID` and `productIDs` to ensure security and target the correct products.
+	// We use the `merchantID` and `productIDs` to ensure security and target the correct products.
 	result := db.Model(&Product{}).
-		Where("id IN ? AND shop_id = ?", productIDs, shopID).
+		Where("id IN ? AND merchant_id = ?", productIDs, merchantID).
 		Update("category_id", nil)
 
 	if result.Error != nil {
@@ -126,22 +126,22 @@ func RemoveProductsFromCategory(db *gorm.DB, shopID uint, productIDs []uint) err
 	}
 
 	// It's a good practice to check if any rows were affected to verify the products existed
-	// and belonged to the shop.
+	// and belonged to the merchant.
 	if result.RowsAffected == 0 {
-		return errors.New("no products found to remove from category or they do not belong to the specified shop")
+		return errors.New("no products found to remove from category or they do not belong to the specified merchant")
 	}
 
 	return nil
 }
 
-// UpdateCategory updates one or more fields of a category, ensuring it belongs to the specified shop.
+// UpdateCategory updates one or more fields of a category, ensuring it belongs to the specified merchant.
 // This is a single, secure, and flexible function that replaces the two redundant functions.
-func UpdateCategory(db *gorm.DB, shopID uint, categoryID uint, updates map[string]interface{}) (Category, error) {
+func UpdateCategory(db *gorm.DB, merchantID uint, categoryID uint, updates map[string]interface{}) (Category, error) {
     var category Category
     // Start a transaction to ensure the find and update are atomic.
     err := db.Transaction(func(tx *gorm.DB) error {
-        // Find the category by ID and shopID to ensure it exists and belongs to the shop.
-        if err := tx.Where("id = ? AND shop_id = ?", categoryID, shopID).First(&category).Error; err != nil {
+        // Find the category by ID and merchantID to ensure it exists and belongs to the merchant.
+        if err := tx.Where("id = ? AND merchant_id = ?", categoryID, merchantID).First(&category).Error; err != nil {
             // If not found, return an error. The transaction will be rolled back.
             return err
         }
