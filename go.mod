@@ -3,10 +3,12 @@ module github.com/GigaDesk/eardrum-postgres
 go 1.23.2
 
 require (
-	github.com/GigaDesk/eardrum-interfaces v1.1.8
+	github.com/GigaDesk/eardrum-interfaces v1.1.9
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.30.0
 )
+
+require github.com/AlekSi/pointer v1.2.0 // indirect
 
 require (
 	github.com/google/uuid v1.6.0

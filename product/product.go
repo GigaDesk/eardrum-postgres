@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/GigaDesk/eardrum-postgres/shop"
+	"github.com/GigaDesk/eardrum-postgres/merchant"
 	"gorm.io/gorm"
 )
 
@@ -13,8 +13,8 @@ type Product struct {
 	gorm.Model
 	Name                string    `gorm:"not null;uniqueIndex:idx_product_shop"` // The name of the product. Must be unique within a single shop.
 	PricePerUnitInCents uint      `gorm:"not null"`                              // The product's price per unit. A uint cannot be negative.
-	ShopID              uint      `gorm:"not null;uniqueIndex:idx_product_shop"` // The foreign key linking this product to its parent shop.
-	Shop                shop.Shop `gorm:"foreignKey:ShopID"`                     // GORM association to the Shop model.
+	MerchantID              uint      `gorm:"not null;uniqueIndex:idx_product_shop"` // The foreign key linking this product to its parent shop.
+	Merchant                merchant.Merchant `gorm:"foreignKey:MerchantID"`                     // GORM association to the Merchant model.
 	CategoryID          *uint     // The foreign key linking this product to its category. A product can be uncategorized.
 	Category            *Category `gorm:"foreignKey:CategoryID"` // GORM association to the Category model.
 	Blocked             bool      `gorm:"default:false"`         // A flag indicating whether the product is currently active (false) or inactive (true).

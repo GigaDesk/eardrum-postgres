@@ -3,7 +3,7 @@ package transaction
 import (
 	"time"
 
-	"github.com/GigaDesk/eardrum-postgres/shop"
+	"github.com/GigaDesk/eardrum-postgres/merchant"
 	"github.com/GigaDesk/eardrum-postgres/user"
 	"gorm.io/gorm"
 )
@@ -30,11 +30,11 @@ type Transaction struct {
     // The `foreignKey:UserID` tag explicitly links it to the UserID field.
     User        user.User      `gorm:"foreignKey:UserID"`
     
-    // ShopID is another foreign key to the Shop model.
-    ShopID      uint      `gorm:"not null"`
+    // MerchantID is another foreign key to the Merchant model.
+    MerchantID      uint      `gorm:"not null"`
     
-    // Shop is the GORM association.
-    Shop        shop.Shop      `gorm:"foreignKey:ShopID"`
+    // Merchant is the GORM association.
+    Merchant        merchant.Merchant      `gorm:"foreignKey:MerchantID"`
 }
 
 // Returns the unique ID of the transaction
@@ -67,9 +67,9 @@ func (t Transaction) GetTransactionCostInCents() uint {
 	return t.TransactionCostInCents
 }
 
-// Returns the unique identifier of the shop the transaction was made to. 🏪
-func (t Transaction) GetShopID() int64 {
-	return int64(t.ShopID)
+// Returns the unique identifier of the merchant the transaction was made to. 🏪
+func (t Transaction) GetMerchantID() int64 {
+	return int64(t.MerchantID)
 }
 
 
