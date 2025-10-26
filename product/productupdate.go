@@ -1,7 +1,7 @@
 package product
 
 import (
-	"errors"
+	"fmt"
 
 	"gorm.io/gorm"
 )
@@ -15,10 +15,12 @@ func DeleteProduct(db *gorm.DB, merchantID, productID uint) error { // CHANGED s
 	// Update the 'Deleted' field, ensuring the product belongs to the correct merchant.
 	result := db.Model(&Product{}).Where("id = ? AND merchant_id = ?", productID, merchantID).Update("deleted", true) // CHANGED shop_id to merchant_id
 	if result.Error != nil {
-		return result.Error
+		// System error during persistence (500)
+		return ErrDBPersistenceFailure(fmt.Errorf("failed to delete product %d: %w", productID, result.Error))
 	}
 	if result.RowsAffected == 0 {
-		return errors.New("product not found or does not belong to the specified merchant") // CHANGED shop to merchant
+		// Product not found or does not belong to merchant (404)
+		return ErrProductNotFound("ID", productID)
 	}
 	return nil
 }
@@ -28,10 +30,12 @@ func BlockProduct(db *gorm.DB, merchantID, productID uint) error { // CHANGED sh
 	// Update the 'Blocked' field, ensuring the product belongs to the correct merchant.
 	result := db.Model(&Product{}).Where("id = ? AND merchant_id = ?", productID, merchantID).Update("blocked", true) // CHANGED shop_id to merchant_id
 	if result.Error != nil {
-		return result.Error
+		// System error during persistence (500)
+		return ErrDBPersistenceFailure(fmt.Errorf("failed to block product %d: %w", productID, result.Error))
 	}
 	if result.RowsAffected == 0 {
-		return errors.New("product not found or does not belong to the specified merchant") // CHANGED shop to merchant
+		// Product not found or does not belong to merchant (404)
+		return ErrProductNotFound("ID", productID)
 	}
 	return nil
 }
@@ -41,10 +45,12 @@ func RestoreProduct(db *gorm.DB, merchantID, productID uint) error { // CHANGED 
 	// Update the 'Deleted' field, ensuring the product belongs to the correct merchant.
 	result := db.Model(&Product{}).Where("id = ? AND merchant_id = ?", productID, merchantID).Update("deleted", false) // CHANGED shop_id to merchant_id
 	if result.Error != nil {
-		return result.Error
+		// System error during persistence (500)
+		return ErrDBPersistenceFailure(fmt.Errorf("failed to restore product %d: %w", productID, result.Error))
 	}
 	if result.RowsAffected == 0 {
-		return errors.New("product not found or does not belong to the specified merchant") // CHANGED shop to merchant
+		// Product not found or does not belong to merchant (404)
+		return ErrProductNotFound("ID", productID)
 	}
 	return nil
 }
@@ -54,10 +60,12 @@ func UnblockProduct(db *gorm.DB, merchantID, productID uint) error { // CHANGED 
 	// Update the 'Blocked' field, ensuring the product belongs to the correct merchant.
 	result := db.Model(&Product{}).Where("id = ? AND merchant_id = ?", productID, merchantID).Update("blocked", false) // CHANGED shop_id to merchant_id
 	if result.Error != nil {
-		return result.Error
+		// System error during persistence (500)
+		return ErrDBPersistenceFailure(fmt.Errorf("failed to unblock product %d: %w", productID, result.Error))
 	}
 	if result.RowsAffected == 0 {
-		return errors.New("product not found or does not belong to the specified merchant") // CHANGED shop to merchant
+		// Product not found or does not belong to merchant (404)
+		return ErrProductNotFound("ID", productID)
 	}
 	return nil
 }
@@ -67,10 +75,12 @@ func UpdateProductPrice(db *gorm.DB, merchantID, productID uint, newPrice uint) 
 	// Update the 'PricePerUnitInCents' field, ensuring the product belongs to the correct merchant.
 	result := db.Model(&Product{}).Where("id = ? AND merchant_id = ?", productID, merchantID).Update("price_per_unit_in_cents", newPrice) // CHANGED shop_id to merchant_id
 	if result.Error != nil {
-		return result.Error
+		// System error during persistence (500)
+		return ErrDBPersistenceFailure(fmt.Errorf("failed to update price for product %d: %w", productID, result.Error))
 	}
 	if result.RowsAffected == 0 {
-		return errors.New("product not found or does not belong to the specified merchant") // CHANGED shop to merchant
+		// Product not found or does not belong to merchant (404)
+		return ErrProductNotFound("ID", productID)
 	}
 	return nil
 }
