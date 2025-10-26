@@ -8,17 +8,17 @@ import (
 	"gorm.io/gorm"
 )
 
-// Product represents a product that a shop sells.
+// Product represents a product that a merchant sells.
 type Product struct {
 	gorm.Model
-	Name                string    `gorm:"not null;uniqueIndex:idx_product_shop"` // The name of the product. Must be unique within a single shop.
-	PricePerUnitInCents uint      `gorm:"not null"`                              // The product's price per unit. A uint cannot be negative.
-	MerchantID              uint      `gorm:"not null;uniqueIndex:idx_product_shop"` // The foreign key linking this product to its parent shop.
-	Merchant                merchant.Merchant `gorm:"foreignKey:MerchantID"`                     // GORM association to the Merchant model.
-	CategoryID          *uint     // The foreign key linking this product to its category. A product can be uncategorized.
-	Category            *Category `gorm:"foreignKey:CategoryID"` // GORM association to the Category model.
-	Blocked             bool      `gorm:"default:false"`         // A flag indicating whether the product is currently active (false) or inactive (true).
-	Deleted             bool      `gorm:"default:false"`         // A flag indicating whether the product is currently active (false) or deleted (true).
+	Name                string            `gorm:"not null;uniqueIndex:idx_product_shop"` // The name of the product. Must be unique within a single merchant.
+	PricePerUnitInCents uint              `gorm:"not null"`                              // The product's price per unit. A uint cannot be negative.
+	MerchantID          uint              `gorm:"not null;uniqueIndex:idx_product_shop"` // The foreign key linking this product to its parent merchant.
+	Merchant            merchant.Merchant `gorm:"foreignKey:MerchantID"`                 // GORM association to the Merchant model.
+	CategoryID          *uint             // The foreign key linking this product to its category. A product can be uncategorized.
+	Category            *Category         `gorm:"foreignKey:CategoryID"` // GORM association to the Category model.
+	Blocked             bool              `gorm:"default:false"`         // A flag indicating whether the product is currently active (false) or inactive (true).
+	Deleted             bool              `gorm:"default:false"`         // A flag indicating whether the product is currently active (false) or deleted (true).
 }
 
 // BeforeSave is a GORM hook that runs before a record is created or updated.
@@ -89,7 +89,7 @@ func (p Product) GetDeleted() bool {
 	return p.Deleted
 }
 
-// Returns the unique identifier of the shop associated with this product. 🏪
-func (p Product) GetShopID() int64 {
-	return int64(p.ShopID)
+// Returns the unique identifier of the merchant associated with this product. 🏪
+func (p Product) GetMerchantID() int64 {
+	return int64(p.MerchantID)
 }
