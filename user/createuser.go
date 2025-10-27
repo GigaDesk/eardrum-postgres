@@ -29,7 +29,12 @@ func CreateUser(s user.NewUser, Db *gorm.DB) (user.User, error) {
     
     // 2. Create unverified user data
     // (Omitted fields for brevity, assuming UnverifiedUser struct exists)
-    unverifieduser := &UnverifiedUser{ /* ... */ }
+    unverifieduser := &UnverifiedUser{
+        UserName: s.GetUserName(),
+        PhoneNumber: s.GetPhoneNumber(),
+        Password: s.GetPassword(),
+        MpesaNumber: s.GetMpesaNumber(),
+    }
 
     // Generate a new UUID and assign it to the QrCode field
     unverifieduser.QrCode = uuid.New()
