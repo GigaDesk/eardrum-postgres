@@ -71,3 +71,13 @@ func ErrDBPersistenceFailure(err error) *customErrors.PublicError {
         fmt.Errorf("db persistence error in transaction: %w", err),
     )
 }
+
+// NewAccountNotFoundError returns a 404 Not Found error.
+// Used when a specific account identifier (UID, card number, etc.) does not exist in the system.
+func NewAccountNotFoundError(message string) *customErrors.PublicError {
+    return customErrors.NewHTTPError(
+        http.StatusNotFound, // 404
+        message,
+        nil, 
+    )
+}
