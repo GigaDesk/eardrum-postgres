@@ -39,13 +39,16 @@ func ProcessOrder(db *gorm.DB, merchantID uint, newTx transaction.NewProductsTra
 			if err1 != nil {
 				return err1
 			}
-		} else {
+		} else if len(newTx.GetUUID()) == 36{
 			code, err2 = uuid.Parse(newTx.GetUUID())
 			if err2 != nil {
 				return ErrDBPersistenceFailure(errors.New("error parsing qr code"))
 			}
 
+		} else {
+			return NewAccountNotFoundError("Invalid QR code. Please scan again")
 		}
+
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("qr_code = ?", code).
 			First(&u).Error; err != nil {
@@ -197,13 +200,16 @@ func ProcessTransaction(db *gorm.DB, merchantID uint, newTx transaction.NewTrans
 			if err1 != nil {
 				return err1
 			}
-		} else {
+		} else if len(newTx.GetUUID()) == 36 {
 			code, err2 = uuid.Parse(newTx.GetUUID())
 			if err2 != nil {
 				return ErrDBPersistenceFailure(errors.New("error parsing qr code"))
 			}
 
+		} else {
+			return NewAccountNotFoundError("Invalid QR code. Please scan again")
 		}
+		
 		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
 			Where("qr_code = ?", code).
 			First(&u).Error; err != nil {
