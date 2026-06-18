@@ -2,7 +2,6 @@ package transaction
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"strconv"
 
@@ -10,171 +9,11 @@ import (
 	customErrors "github.com/GigaDesk/eardrum-interfaces/errors"
 	"github.com/GigaDesk/eardrum-interfaces/transaction"
 	"github.com/GigaDesk/eardrum-postgres/merchant"
-	"github.com/GigaDesk/eardrum-postgres/product"
 	"github.com/GigaDesk/eardrum-postgres/user"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
-
-// ProcessOrder handles a complete, atomic financial transaction.
-// It validates credentials, processes products, updates accounts, and creates all
-// necessary database records securely within a single transaction.
-// checkPIN is a function passed as an argument to decouple logic.
-// ProcessOrder handles a complete, atomic financial transaction.
-func ProcessOrder(db *gorm.DB, merchantID uint, newTx transaction.NewProductsTransaction, checkPIN func(hashedPIN, PIN string) error) (*Transaction, error) {
-	var newTransaction *Transaction
-	err := db.Transaction(func(tx *gorm.DB) error {
-		// =========================================================================
-		// 1. USER VALIDATION & ROW LOCKING
-		// =========================================================================
-		var u user.User
-
-		var code uuid.UUID
-		var err1 *customErrors.PublicError
-        var err2 error
-
-		if len(newTx.GetUUID()) < 36 {
-			code, err1 = PartialToFullUuid(db, newTx.GetUUID(), newTx.GetPinCode(), checkPIN)
-			if err1 != nil {
-				return err1
-			}
-		} else if len(newTx.GetUUID()) == 36{
-			code, err2 = uuid.Parse(newTx.GetUUID())
-			if err2 != nil {
-				return ErrDBPersistenceFailure(errors.New("error parsing qr code"))
-			}
-
-		} else {
-			return NewAccountNotFoundError("Invalid QR code. Please scan again")
-		}
-
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("qr_code = ?", code).
-			First(&u).Error; err != nil {
-			// User not found (e.g., UUID/QRCode invalid) -> 404 NotFound
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return NewAccountNotFoundError("Invalid QR code. Please scan again")
-			}
-			// Other DB lookup issue -> 500 Internal
-			return ErrDBLookupFailure("Failed to look up user for transaction.", err)
-		}
-
-		// Ensure the provided PIN is correct.
-		if err := checkPIN(pointer.GetString(u.PinCode), newTx.GetPinCode()); err != nil {
-			// PIN mismatch -> 401 Unauthorized
-			return NewUnauthorizedError("Invalid pin code.")
-		}
-
-		// =========================================================================
-		// 2. PRODUCT VALIDATION & TOTAL AMOUNT CALCULATION
-		// =========================================================================
-		var totalAmount uint = 0
-		var purchasedRecords []Purchase
-		for _, item := range newTx.GetPurchasedProducts() {
-			var p product.Product
-
-			if err := tx.First(&p, "id = ?", item.GetProductID()).Error; err != nil {
-				// Product not found -> 404 Not Found (from transaction layer)
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					return NewForbiddenFailure(fmt.Sprintf("Product with ID %d not found.", item.GetProductID()))
-				}
-				return ErrDBLookupFailure("Failed to look up product data.", err)
-			}
-
-			// CRITICAL: Check if the product is blocked or deleted.
-			if p.Blocked || p.Deleted {
-				// Product unavailable -> 403 Forbidden
-				return NewForbiddenFailure(fmt.Sprintf("Product with ID %d is not available for purchase.", item.GetProductID()))
-			}
-
-			// Crucial security check: Ensure the product belongs to the correct merchant.
-			if p.MerchantID != merchantID {
-				// Mismatched product/merchant ID -> 403 Forbidden
-				return NewForbiddenFailure(fmt.Sprintf("Product ID %d does not belong to Merchant ID %d.", item.GetProductID(), merchantID))
-			}
-
-			// Calculate cost and prepare records
-			itemCost := p.PricePerUnitInCents * uint(item.GetUnitsBought())
-			totalAmount += itemCost
-			purchasedRecords = append(purchasedRecords, Purchase{
-				ProductID:          uint(item.GetProductID()),
-				UnitsBought:        uint(item.GetUnitsBought()),
-				TotalAmountInCents: itemCost,
-			})
-		}
-
-		// =========================================================================
-		// 3. TRANSACTION COST & FINAL BALANCE CHECK
-		// =========================================================================
-		feePercentageStr := os.Getenv("TRANSACTION_FEE_PERCENT")
-		feePercentage, err := strconv.ParseUint(feePercentageStr, 10, 64)
-		if err != nil {
-			// Configuration error -> 500 Internal Server Error
-			return ErrDBPersistenceFailure(errors.New("transaction fee environment variable is not properly configured"))
-		}
-
-		transactionCost := (totalAmount * uint(feePercentage)) / 100
-		finalDeduction := totalAmount + transactionCost
-
-		// Check if the user has a sufficient balance.
-		if u.AccountBalanceInCents < finalDeduction {
-			// Insufficient balance -> 402 Payment Required
-			return NewPaymentRequiredError("Insufficient balance to complete transaction.")
-		}
-
-		// =========================================================================
-		// 4. ACCOUNT UPDATES (LOCKING BOTH USER AND SHOP)
-		// =========================================================================
-		var s merchant.Merchant
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			First(&s, "id = ?", merchantID).Error; err != nil {
-			// Merchant not found (shouldn't happen if merchant is logged in) -> 404 Not Found
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return NewForbiddenFailure("Target merchant not found or invalid.") // Treat as 403/Forbidden to prevent merchant enumeration
-			}
-			return ErrDBLookupFailure("Failed to look up merchant for transaction.", err) // 500
-		}
-
-		// Perform balance updates
-		u.AccountBalanceInCents -= finalDeduction
-		s.AccountBalanceInCents += totalAmount
-
-		// Save the updated balances to the database within the transaction.
-		if err := tx.Save(&u).Error; err != nil {
-			return ErrDBPersistenceFailure(err) // 500 Internal (Save error)
-		}
-		if err := tx.Save(&s).Error; err != nil {
-			return ErrDBPersistenceFailure(err) // 500 Internal (Save error)
-		}
-
-		// =========================================================================
-		// 5. CREATE TRANSACTION & PURCHASE RECORDS
-		// =========================================================================
-		newTransaction = &Transaction{
-			UserID:                 u.ID,
-			MerchantID:             merchantID,
-			TotalAmountInCents:     totalAmount,
-			TransactionCostInCents: transactionCost,
-		}
-		if err := tx.Create(newTransaction).Error; err != nil {
-			return ErrDBPersistenceFailure(err) // 500 Internal (Create error)
-		}
-
-		// Create each purchase line item
-		for i := range purchasedRecords {
-			purchasedRecords[i].TransactionID = newTransaction.ID
-			if err := tx.Create(&purchasedRecords[i]).Error; err != nil {
-				return ErrDBPersistenceFailure(err) // 500 Internal (Create error)
-			}
-		}
-
-		return nil // Transaction will Commit
-	})
-
-	// If the transaction failed, the structured error is returned.
-	return newTransaction, err
-}
 
 // ProcessTransaction handles a complete, atomic financial transaction for a single amount.
 // It validates credentials, processes the amount, updates accounts, and creates the
