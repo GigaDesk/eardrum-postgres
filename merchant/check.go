@@ -1,7 +1,9 @@
 package merchant
 
-import "gorm.io/gorm"
-
+import (
+	"github.com/GigaDesk/eardrum-interfaces/errors"
+	"gorm.io/gorm"
+)
 
 // CheckMerchantPhoneNumber checks if a phone number exists in either the merchant or unverified merchant table.
 func CheckMerchantPhoneNumber(Db *gorm.DB, phoneNumber string) (*UniquenessCheck, error) {
@@ -10,12 +12,16 @@ func CheckMerchantPhoneNumber(Db *gorm.DB, phoneNumber string) (*UniquenessCheck
 
 	// 1. Check Verified Merchant Count
 	if err := Db.Model(&Merchant{}).Where("phone_number = ?", phoneNumber).Count(&verifiedCount).Error; err != nil {
-		return nil, ErrDBLookupFailure("Failed to count verified merchants by phone number.", err)
+		err1 := errors.New(errors.EARMerchantLookupFailedByPhone, err)
+		err1.Log()
+		return nil, err1
 	}
 
 	// 2. Check Unverified Merchant Count
 	if err := Db.Model(&UnverifiedMerchant{}).Where("phone_number = ?", phoneNumber).Count(&unverifiedCount).Error; err != nil {
-		return nil, ErrDBLookupFailure("Failed to count unverified merchants by phone number.", err)
+		err1 := errors.New(errors.EARMerchantLookupFailedByPhone, err)
+		err1.Log()
+		return nil, err1
 	}
 
 	return &UniquenessCheck{
@@ -31,12 +37,16 @@ func CheckMerchantUserName(Db *gorm.DB, userName string) (*UniquenessCheck, erro
 
 	// 1. Check Verified Merchant Count
 	if err := Db.Model(&Merchant{}).Where("user_name = ?", userName).Count(&verifiedCount).Error; err != nil {
-		return nil, ErrDBLookupFailure("Failed to count verified merchants by username.", err)
+		err1 := errors.New(errors.EARMerchantLookupFailedByUsername, err)
+		err1.Log()
+		return nil, err1
 	}
 
 	// 2. Check Unverified Merchant Count
 	if err := Db.Model(&UnverifiedMerchant{}).Where("user_name = ?", userName).Count(&unverifiedCount).Error; err != nil {
-		return nil, ErrDBLookupFailure("Failed to count unverified merchants by username.", err)
+		err1 := errors.New(errors.EARMerchantLookupFailedByUsername, err)
+		err1.Log()
+		return nil, err1
 	}
 
 	return &UniquenessCheck{

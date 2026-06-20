@@ -12,32 +12,39 @@ func CreateMerchant(s merchant.NewMerchant, Db *gorm.DB) (merchant.Merchant, err
 	phoneCheck, err := CheckMerchantPhoneNumber(Db, s.GetPhoneNumber())
 	if err != nil {
 		// Database failure during the lookup/count operation -> 500 Internal Server Error
-		return nil, ErrDBLookupFailure("Failed to check merchant phone number existence.", err)
+		return nil, err
 	}
 
 	if phoneCheck.Exists {
 		if !phoneCheck.IsVerified {
-			// Business logic conflict: User exists but needs verification -> 409 Conflict
-			return nil, ErrMerchantConflict("phone number already exists but is unverified. Please proceed to verification.", nil)
+			err1 := errors.New(errors.EARMerchantPhoneExistsUnverified, err)
+			err1.Log()
+			return nil, err1
 		}
 		// Business logic conflict: User fully exists -> 409 Conflict
-		return nil, ErrMerchantConflict("phone number already exists and is verified.", nil)
+		err1 := errors.New(errors.EARMerchantPhoneExistsVerified, err)
+		err1.Log()
+		return nil, err1
 	}
 
 	// 2. Check if the username already exists
 	usernameCheck, err := CheckMerchantUserName(Db, s.GetUserName())
 	if err != nil {
 		// Database failure during the lookup/count operation -> 500 Internal Server Error
-		return nil, ErrDBLookupFailure("Failed to check merchant username existence.", err)
+		return nil, err
 	}
 
 	if usernameCheck.Exists {
 		if !usernameCheck.IsVerified {
 			// Business logic conflict: Username exists in unverified state -> 409 Conflict
-			return nil, ErrMerchantConflict("username already exists but is unverified.", nil)
+			err1 := errors.New(errors.EARMerchantUsernameExistsUnverified, err)
+			err1.Log()
+			return nil, err1
 		}
 		// Business logic conflict: Username fully exists -> 409 Conflict
-		return nil, ErrMerchantConflict("username already exists and is verified.", nil)
+		err1 := errors.New(errors.EARMerchantUsernameExistsVerified, err)
+		err1.Log()
+		return nil, err1
 	}
 
 	// 3. Create unverified merchant data

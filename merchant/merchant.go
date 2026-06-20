@@ -9,13 +9,12 @@ import (
 // Merchant represents the merchant model for the system.
 type Merchant struct {
 	gorm.Model
-	UserName              string  `gorm:"uniqueIndex;not null"`       // UserName of the merchant (must be unique)
-	PhoneNumber           string  `gorm:"uniqueIndex;not null"`       // Phone number of the merchant
-	Password              string  `gorm:"not null"`                   // The merchant's password. It should be stored as a secure hash.
-	AccountBalanceInCents uint    `gorm:"not null;default:0"`         // The merchant's account balance in cents
-	PinCode               *string `gorm:""`                           // The merchant's security PIN code. It should be stored as a secure hash (NULLABLE).
+	UserName              string  `gorm:"uniqueIndex;not null"` // UserName of the merchant (must be unique)
+	PhoneNumber           string  `gorm:"uniqueIndex;not null"` // Phone number of the merchant
+	Password              string  `gorm:"not null"`             // The merchant's password. It should be stored as a secure hash.
+	AccountBalanceInCents uint    `gorm:"not null;default:0"`   // The merchant's account balance in cents
+	PinCode               *string `gorm:""`                     // The merchant's security PIN code. It should be stored as a secure hash (NULLABLE).
 }
-
 
 // Returns the creation timestamp of the merchant
 func (s Merchant) GetCreatedAt() time.Time {
@@ -60,11 +59,11 @@ func (s Merchant) GetPinCode() *string {
 // UnverifiedMerchant represents the unverified merchant model for the system.
 type UnverifiedMerchant struct {
 	gorm.Model
-	UserName              string  `gorm:"uniqueIndex;not null"`       // Name of the merchant (must be unique)
-	PhoneNumber           string  `gorm:"uniqueIndex;not null"`       // Phone number of the merchant
-	Password              string  `gorm:"not null"`                   // The merchant's password. It should be stored as a secure hash.
-	AccountBalanceInCents uint    `gorm:"not null;default:0"`         // The merchant's account balance in cents
-	PinCode               *string `gorm:""`                           // The merchant's security PIN code. It should be stored as a secure hash.
+	UserName              string  `gorm:"uniqueIndex;not null"` // Name of the merchant (must be unique)
+	PhoneNumber           string  `gorm:"uniqueIndex;not null"` // Phone number of the merchant
+	Password              string  `gorm:"not null"`             // The merchant's password. It should be stored as a secure hash.
+	AccountBalanceInCents uint    `gorm:"not null;default:0"`   // The merchant's account balance in cents
+	PinCode               *string `gorm:""`                     // The merchant's security PIN code. It should be stored as a secure hash.
 }
 
 // Returns the creation timestamp of the unverified merchant
