@@ -1,9 +1,10 @@
 package user
 
 import (
-	"errors" // Standard Go errors package
+	pgerror "errors" // Standard Go errors package
 	"gorm.io/gorm"
 	"github.com/GigaDesk/eardrum-interfaces/user"
+	"github.com/GigaDesk/eardrum-interfaces/errors"
 )
 
 // GetUserWithPhoneNumber finds a user by phone number.
@@ -13,53 +14,65 @@ func GetUserWithPhoneNumber(Db *gorm.DB, PhoneNumber string) (user.User, error) 
 	// Find the first user that matches the input phonenumber
 	if err := Db.Where("phone_number = ?", PhoneNumber).First(&u).Error; err != nil {
 		
-		// 1. Check if the error is the known "Not Found" condition
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound("phone_number", PhoneNumber) // Returns 404
+			// 1. Check for the known "Not Found" condition
+		if pgerror.Is(err, gorm.ErrRecordNotFound) {
+			// Returns 404 Not Found
+			err1 := errors.New(errors.EARUserNotFoundByPhone, err)
+			err1.Log()
+			return nil, err1
 		}
 
 		// 2. All other errors (connection, query syntax, etc.) -> 500 Internal
-		return nil, ErrDBLookupFailure("Failed to execute query for user phone number.", err)
+		err1 := errors.New(errors.EARUserLookupFailedByPhone, err)
+		err1.Log()
+		return nil, err1
 	}
 
 	return u, nil
 }
 
-// GetUserWithId finds a user by ID.
-func GetUserWithId(Db *gorm.DB, Id int) (user.User, error) {
-	var u *User
-	
-	// Fetch the record by primary key
-	if err := Db.First(&u, Id).Error; err != nil {
-		
-		// 1. Check for Not Found
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound("ID", Id) // Returns 404
-		}
+// GetUserWithUsername finds a user by username.
+func GetUserWithUsername(Db *gorm.DB, Username string) (user.User, error) {
+    var u *User
 
-		// 2. All other errors -> 500 Internal
-		return nil, ErrDBLookupFailure("Failed to execute query for user ID.", err)
-	}
+    // Find the first user that matches the input username
+    if err := Db.Where("user_name = ?", Username).First(&u).Error; err != nil {
+        
+        // 1. Check for the known "Not Found" condition
+        if pgerror.Is(err, gorm.ErrRecordNotFound) {
+            // Returns 404 Not Found (Assuming EARUserNotFoundByUsername exists in your interfaces)
+            err1 := errors.New(errors.EARUserNotFoundByUsername, err)
+            err1.Log()
+            return nil, err1
+        }
 
-	return u, nil
+        // 2. All other errors (connection, query syntax, etc.) -> 500 Internal
+        err1 := errors.New(errors.EARUserLookupFailedByUsername, err)
+        err1.Log()
+        return nil, err1
+    }
+
+    return u, nil
 }
+// GetUsers retrieves a paginated list of users registered in the database.
+// - limit: The maximum number of records to return (e.g., 5)
+// - offset: The number of records to skip before starting to return (e.g., 0 for the first page)
+func GetUsers(Db *gorm.DB, limit int, offset int) ([]user.User, error) {
+    var users []*User
 
-// GetUsers returns all users.
-func GetUsers(Db *gorm.DB) ([]user.User, error) {
-	var users []*User
+    // Find all records with limit and offset applied
+    if err := Db.Limit(limit).Offset(offset).Find(&users).Error; err != nil {
+        // Db.Find only returns an error on connection or query issue, not if the table is empty.
+        err1 := errors.New(errors.EARUserListRetrievalFailed, err)
+        err1.Log()
+        return nil, err1
+    }
 
-	// Find all records
-	if err := Db.Find(&users).Error; err != nil {
-		// Note: Db.Find does NOT return ErrRecordNotFound if the table is empty.
-		// It only returns an error on connection or query issue.
-		return nil, ErrDBLookupFailure("Failed to retrieve list of all users.", err)
-	}
+    // Transform [](*User) to []user.User
+    var userslist []user.User
+    for _, u := range users {
+        userslist = append(userslist, u)
+    }
 
-	// Transform [](*User) to []user.User (assuming *User implements user.User)
-	var userslist []user.User
-	for _, u := range users {
-		userslist = append(userslist, u)
-	}
-
-	return userslist, nil
+    return userslist, nil
 }
