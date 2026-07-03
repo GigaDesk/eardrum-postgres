@@ -1,57 +1,75 @@
 package user
 
 import (
-    
-    "github.com/GigaDesk/eardrum-interfaces/user"
-    "github.com/google/uuid"
-    "gorm.io/gorm"
+	"github.com/GigaDesk/eardrum-interfaces/errors"
+	"github.com/GigaDesk/eardrum-interfaces/user"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // creates an unverified user record
 func CreateUser(s user.NewUser, Db *gorm.DB) (user.User, error) {
-    // 1. Check if the phone number already exists
-    phonenumberexists, err := CheckUserPhoneNumber(Db, s.GetPhoneNumber())
+	// 1. Check if the phone number already exists
+	phoneCheck, err := CheckUserPhoneNumber(Db, s.GetPhoneNumber())
 
-    if err != nil {
-        // Database connection/query failure on lookup -> 500 Internal
-        return nil, ErrDBLookupFailure("Failed to check user existence due to a database connection or query issue.",err)
-    }
+	if err != nil {
+		// Database connection/query failure on lookup -> 500 Internal
+		return nil, err
+	}
 
-    if phonenumberexists.Unverified {
-        // Business logic error: User exists but needs verification -> 409 Conflict
-        return nil, ErrUserConflict("User phone number already exists but is unverified. Please complete verification.")
-    }
+	if phoneCheck.Exists {
+		if !phoneCheck.IsVerified {
+			err1 := errors.New(errors.EARUserPhoneExistsUnverified, err)
+			err1.Log()
+			return nil, err1
+		}
+		// Business logic conflict: User fully exists -> 409 Conflict
+		err1 := errors.New(errors.EARUserPhoneExistsVerified, err)
+		err1.Log()
+		return nil, err1
+	}
 
-    if phonenumberexists.Verified {
-        // Business logic error: User fully exists -> 409 Conflict
-        return nil, ErrUserConflict("User phone number already exists and is verified.")
-    }
-    
-    // 2. Create unverified user data
-    // (Omitted fields for brevity, assuming UnverifiedUser struct exists)
-    unverifieduser := &UnverifiedUser{
-        UserName: s.GetUserName(),
-        PhoneNumber: s.GetPhoneNumber(),
-        Password: s.GetPassword(),
-        MpesaNumber: s.GetMpesaNumber(),
-    }
+	// 2. Check if the username already exists
+	usernameCheck, err := CheckUserUserName(Db, s.GetUserName())
+	if err != nil {
+		// Database failure during the lookup/count operation -> 500 Internal Server Error
+		return nil, err
+	}
 
-    // Generate a new UUID and assign it to the QrCode field
-    unverifieduser.QrCode = uuid.New()
+	if usernameCheck.Exists {
+		if !usernameCheck.IsVerified {
+			// Business logic conflict: Username exists in unverified state -> 409 Conflict
+			err1 := errors.New(errors.EARUserUsernameExistsUnverified, err)
+			err1.Log()
+			return nil, err1
+		}
+		// Business logic conflict: Username fully exists -> 409 Conflict
+		err1 := errors.New(errors.EARUserUsernameExistsVerified, err)
+		err1.Log()
+		return nil, err1
+	}
 
-    // 3. Create record in the database
-    if err := Db.Create(unverifieduser).Error; err != nil {
-        
-        // A. Check for specific, recoverable DB errors (like Unique Constraint Violation)
-        if isUniqueConstraintViolation(err) {
-            // This is a known conflict (e.g., QR code or phone number violation) -> 409 Conflict
-            return nil, ErrUserConflict("Phone Number is already in use.")
-        }
+	// 2. Create unverified user data
+	// (Omitted fields for brevity, assuming UnverifiedUser struct exists)
+	unverifieduser := &UnverifiedUser{
+		UserName:    s.GetUserName(),
+		PhoneNumber: s.GetPhoneNumber(),
+		Password:    s.GetPassword(),
+	}
 
-        // B. All other unexpected DB errors -> 500 Internal
-        // The helper wraps the raw 'err' to preserve it for logging.
-        return nil, ErrDBPersistenceFailure(err)
-    }
+	// Generate a new UUID and assign it to the QrCode field
+	unverifieduser.QrCode = uuid.New()
 
-    return unverifieduser, nil
+	// 3. Create record in the database
+	if err := Db.Create(unverifieduser).Error; err != nil {
+
+
+		// B. All other unexpected DB errors -> 500 Internal
+		// The helper wraps the raw 'err' to preserve it for logging.
+		err1 := errors.New(errors.EARInternalError, err)
+		err1.Log()
+		return nil, err1
+	}
+
+	return unverifieduser, nil
 }

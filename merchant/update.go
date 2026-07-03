@@ -1,93 +1,63 @@
 package merchant
 
 import (
-	"errors"
-	"gorm.io/gorm"
+	pgerror "errors"
+
+	"github.com/GigaDesk/eardrum-interfaces/errors" // Replace with your actual custom errors package path
 	"github.com/GigaDesk/eardrum-interfaces/merchant"
-	// Import custom error helpers
+	"gorm.io/gorm"
 )
 
-// UpdatePassword updates the merchant's password.
-func UpdatePassword(Db *gorm.DB, encryptedpassword string, id int) (merchant.Merchant, error) {
-    var m *Merchant
-    
-    // 1. Fetch the record
-    if err := Db.First(&m, id).Error; err != nil {
-        if errors.Is(err, gorm.ErrRecordNotFound) {
-            return nil, ErrMerchantNotFound("ID", id) // 404 Not Found
-        }
-        return nil, ErrDBLookupFailure("Failed to fetch merchant for password update.", err) // 500
-    }
+// UpdatePassword updates the merchant's password using their username.
+func UpdatePassword(Db *gorm.DB, encryptedpassword string, userName string) (merchant.Merchant, error) {
+	var m *Merchant
 
-    // 2. Update the record
-    if err := Db.Model(&m).Updates(map[string]interface{}{"password": encryptedpassword}).Error; err != nil {
-        return nil, ErrDBPersistenceFailure(err) // 500 Internal Server Error
-    }
+	// 1. Fetch the record by username
+	if err := Db.Where("user_name = ?", userName).First(&m).Error; err != nil {
+		if pgerror.Is(err, gorm.ErrRecordNotFound) {
+			err1 := errors.New(errors.EARMerchantNotFoundByUsername, err)
+			err1.Log()
+			return nil, err1 // 404 Not Found
+		}
+		err1 := errors.New(errors.EARMerchantLookupFailedByUsername, err)
+		err1.Log()
+		return nil, err1 // 500 Internal Error
+	}
 
-    // 3. Fetch the updated record (can often be simplified, but kept for pattern)
-    if err := Db.First(&m, id).Error; err != nil {
-        return nil, ErrDBLookupFailure("Failed to re-fetch merchant after password update.", err) // 500
-    }
+	// 2. Update the password field
+	if err := Db.Model(&m).Update("password", encryptedpassword).Error; err != nil {
+		err1 := errors.New(errors.EARInternalError, err)
+		err1.Log()
+		return nil, err1 // 500 Internal Server Error
+	}
 
-    return m, nil
+	return m, nil
 }
 
 // ---
 
-// UpdatePinCode updates the merchant's PIN code.
-func UpdatePinCode(Db *gorm.DB, encryptedpincode string, id int) (merchant.Merchant, error) {
-    var m *Merchant
-    
-    // 1. Fetch the record
-    if err := Db.First(&m, id).Error; err != nil {
-        if errors.Is(err, gorm.ErrRecordNotFound) {
-            return nil, ErrMerchantNotFound("ID", id) // 404 Not Found
-        }
-        return nil, ErrDBLookupFailure("Failed to fetch merchant for PIN update.", err) // 500
-    }
+// UpdatePinCode updates the merchant's PIN code using their username.
+func UpdatePinCode(Db *gorm.DB, encryptedpincode string, userName string) (merchant.Merchant, error) {
+	var m *Merchant
 
-    // 2. Update the record
-    if err := Db.Model(&m).Updates(map[string]interface{}{"pin_code": encryptedpincode}).Error; err != nil {
-        return nil, ErrDBPersistenceFailure(err) // 500 Internal Server Error
-    }
+	// 1. Fetch the record by username
+	if err := Db.Where("user_name = ?", userName).First(&m).Error; err != nil {
+		if pgerror.Is(err, gorm.ErrRecordNotFound) {
+			err1 := errors.New(errors.EARMerchantNotFoundByUsername, err)
+			err1.Log()
+			return nil, err1
+		}
+		err1 := errors.New(errors.EARMerchantLookupFailedByUsername, err)
+		err1.Log()
+		return nil, err1 // 500 Internal Error
+	}
 
-    // 3. Fetch the updated record
-    if err := Db.First(&m, id).Error; err != nil {
-        return nil, ErrDBLookupFailure("Failed to re-fetch merchant after PIN update.", err) // 500
-    }
+	// 2. Update the pin_code field
+	if err := Db.Model(&m).Update("pin_code", encryptedpincode).Error; err != nil {
+		err1 := errors.New(errors.EARInternalError, err)
+		err1.Log()
+		return nil, err1 // 500 Internal Server Error
+	}
 
-    return m, nil
-}
-
-// ---
-
-// UpdateMpesaNumber updates the merchant's M-Pesa number.
-func UpdateMpesaNumber(Db *gorm.DB, new_mpesa_number string, id int) (merchant.Merchant, error) {
-    var m *Merchant
-    
-    // 1. Fetch the record
-    if err := Db.First(&m, id).Error; err != nil {
-        if errors.Is(err, gorm.ErrRecordNotFound) {
-            return nil, ErrMerchantNotFound("ID", id) // 404 Not Found
-        }
-        return nil, ErrDBLookupFailure("Failed to fetch merchant for M-Pesa number update.", err) // 500
-    }
-
-    // 2. Update the record
-    if err := Db.Model(&m).Updates(map[string]interface{}{"mpesa_number": new_mpesa_number}).Error; err != nil {
-        
-        // CRITICAL CHECK: If mpesa_number is a UNIQUE field, check for conflict here.
-        if isUniqueConstraintViolation(err) {
-            return nil, ErrMerchantConflict("The M-Pesa number is already registered to another merchant.", err) // 409 Conflict
-        }
-        
-        return nil, ErrDBPersistenceFailure(err) // 500 Internal Server Error
-    }
-
-    // 3. Fetch the updated record
-    if err := Db.First(&m, id).Error; err != nil {
-        return nil, ErrDBLookupFailure("Failed to re-fetch merchant after M-Pesa number update.", err) // 500
-    }
-
-    return m, nil
+	return m, nil
 }

@@ -6,40 +6,40 @@ import (
 	"github.com/GigaDesk/eardrum-postgres/merchant"
 	"github.com/GigaDesk/eardrum-postgres/user"
 	"gorm.io/gorm"
+    "crypto/rand"
 )
 
 // Transaction represents a financial transaction.
-// It includes foreign keys to both a User and a Shop.
-// gorm.Model automatically includes an 'ID', 'CreatedAt', 'UpdatedAt', and 'DeletedAt' fields.
+// It links a User and a Merchant via their unique UserNames.
 type Transaction struct {
-    gorm.Model
-    
-    // TotalAmountInCents is the transaction amount, stored in cents.
-    // We use `uint` to prevent negative values and `gorm:"not null"` to ensure it's always present.
-    TotalAmountInCents uint `gorm:"not null"`
-    
-    // TransactionCostInCents is the cost of the transaction.
-    // We use `uint` and `gorm:"not null"` to enforce it's a non-negative, required field.
-    TransactionCostInCents uint `gorm:"not null"`
-    
-    // UserID is the foreign key. The `gorm:"not null"` tag ensures
-    // a transaction cannot be created without a valid user.
-    UserID      uint      `gorm:"not null"`
-    
-    // User is the GORM association to the User model, enabling database joins.
-    // The `foreignKey:UserID` tag explicitly links it to the UserID field.
-    User        user.User      `gorm:"foreignKey:UserID"`
-    
-    // MerchantID is another foreign key to the Merchant model.
-    MerchantID      uint      `gorm:"not null"`
-    
-    // Merchant is the GORM association.
-    Merchant        merchant.Merchant      `gorm:"foreignKey:MerchantID"`
+	gorm.Model
+
+    // TransactionID is a 12-character reference code (e.g., 260627R8K4WX)
+	TransactionID string `gorm:"uniqueIndex;not null;type:varchar(12)"`
+
+	// TotalAmountInCents is the transaction amount, stored in cents.
+	TotalAmountInCents uint `gorm:"not null"`
+
+	// TransactionCostInCents is the cost of the transaction.
+	TransactionCostInCents uint `gorm:"not null"`
+
+	// UserUserName acts as the foreign key referencing the User's UserName.
+	UserUserName string `gorm:"not null"`
+
+	// User is the GORM association to the User model.
+	// We specify both foreignKey (on this struct) and references (on the User struct).
+	User user.User `gorm:"foreignKey:UserUserName;references:UserName"`
+
+	// MerchantUserName acts as the foreign key referencing the Merchant's UserName.
+	MerchantUserName string `gorm:"not null"`
+
+	// Merchant is the GORM association to the Merchant model.
+	Merchant merchant.Merchant `gorm:"foreignKey:MerchantUserName;references:UserName"`
 }
 
-// Returns the unique ID of the transaction
-func (t Transaction) GetID() int64 {
-	return int64(t.ID)
+// Returns the unique identifier of the transaction
+func (t Transaction) GetTransactionID() string {
+	return t.TransactionID
 }
 
 // Returns the creation timestamp of the transaction
@@ -67,13 +67,51 @@ func (t Transaction) GetTransactionCostInCents() uint {
 	return t.TransactionCostInCents
 }
 
-// Returns the unique identifier of the merchant the transaction was made to. 🏪
-func (t Transaction) GetMerchantID() int64 {
-	return int64(t.MerchantID)
+// Returns the unique username of the merchant the transaction was made to. 🏪
+func (t Transaction) GetMerchantName() string {
+	return t.MerchantUserName
 }
 
 
-// Returns the unique identifier of the user that made the transtion
-func (t Transaction) GetUserID() int64 {
-	return int64(t.UserID)
+// Returns the unique username of the user that made the transtion
+func (t Transaction) GetUserName() string {
+	return t.UserUserName
+}
+
+// Omitted confusing characters 'I', 'O', '0', '1' to keep strings clear
+const charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" 
+
+// BeforeCreate automatically runs right before the database insert operation.
+func (t *Transaction) BeforeCreate(tx *gorm.DB) (err error) {
+	// 1. Get the current date (6 characters)
+	datePrefix := time.Now().Format("060102")
+
+	// 2. Generate a high-entropy 6-character suffix safely
+	randomSuffix, err := GenerateSecureSuffix(6)
+	if err != nil {
+		return err
+	}
+
+	// 3. Assemble the final 12-character collision-free token
+	t.TransactionID = datePrefix + randomSuffix
+	return nil
+}
+
+// GenerateSecureSuffix uses crypto/rand for secure distributed generation at scale.
+func GenerateSecureSuffix(length int) (string, error) {
+	bytes := make([]byte, length)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+
+	for i := 0; i < length; i++ {
+		// Map the random byte cleanly into our 32-character alphabet
+		bytes[i] = charset[bytes[i]%uintbyte(len(charset))]
+	}
+	return string(bytes), nil
+}
+
+// Helper block for type conversion safety
+func uintbyte(n int) byte {
+	return byte(n)
 }

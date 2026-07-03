@@ -1,68 +1,81 @@
 package merchant
 
 import (
-    "errors"
-    "gorm.io/gorm"
-    "github.com/GigaDesk/eardrum-interfaces/merchant"
-    // Import your custom error helpers
+	pgerror "errors"
+
+	"github.com/GigaDesk/eardrum-interfaces/errors"
+	"github.com/GigaDesk/eardrum-interfaces/merchant"
+	"gorm.io/gorm"
+	// Import your custom error helpers
 )
 
 // GetMerchantWithPhoneNumber finds a merchant by phone number.
 func GetMerchantWithPhoneNumber(Db *gorm.DB, PhoneNumber string) (merchant.Merchant, error) {
-    var m *Merchant
+	var m *Merchant
 
-    // Find the first merchant that matches the input phonenumber
-    if err := Db.Where("phone_number = ?", PhoneNumber).First(&m).Error; err != nil {
-        
-        // 1. Check for the known "Not Found" condition
-        if errors.Is(err, gorm.ErrRecordNotFound) {
-            // Returns 404 Not Found
-            return nil, ErrMerchantNotFound("phone_number", PhoneNumber) 
-        }
+	// Find the first merchant that matches the input phonenumber
+	if err := Db.Where("phone_number = ?", PhoneNumber).First(&m).Error; err != nil {
 
-        // 2. All other errors (connection, query syntax, etc.) -> 500 Internal
-        return nil, ErrDBLookupFailure("Failed to execute query for merchant phone number.", err)
-    }
+		// 1. Check for the known "Not Found" condition
+		if pgerror.Is(err, gorm.ErrRecordNotFound) {
+			// Returns 404 Not Found
+			err1 := errors.New(errors.EARMerchantNotFoundByPhone, err)
+			err1.Log()
+			return nil, err1
+		}
 
-    return m, nil
+		// 2. All other errors (connection, query syntax, etc.) -> 500 Internal
+		err1 := errors.New(errors.EARMerchantLookupFailedByPhone, err)
+		err1.Log()
+		return nil, err1
+	}
+
+	return m, nil
 }
 
-// Gets a merchant by its unique id
-func GetMerchantWithId(Db *gorm.DB, Id int) (merchant.Merchant, error) {
-    var m *Merchant
-    
-    // Fetch the record by primary key
-    if err := Db.First(&m, Id).Error; err != nil {
-        
-        // 1. Check for Not Found
-        if errors.Is(err, gorm.ErrRecordNotFound) {
-            // Returns 404 Not Found
-            return nil, ErrMerchantNotFound("ID", Id) 
-        }
+// GetMerchantWithUserName finds a merchant by username.
+func GetMerchantWithUserName(Db *gorm.DB, userName string) (merchant.Merchant, error) {
+	var m *Merchant
 
-        // 2. All other errors -> 500 Internal
-        return nil, ErrDBLookupFailure("Failed to execute query for merchant ID.", err)
-    }
+	// Find the first merchant that matches the input username
+	if err := Db.Where("user_name = ?", userName).First(&m).Error; err != nil {
 
-    return m, nil
+		// 1. Check for the known "Not Found" condition
+		if pgerror.Is(err, gorm.ErrRecordNotFound) {
+			// Returns 404 Not Found
+			err1 := errors.New(errors.EARMerchantNotFoundByUsername, err)
+			err1.Log()
+			return nil, err1
+		}
+
+		// 2. All other errors (connection, query syntax, etc.) -> 500 Internal
+		err1 := errors.New(errors.EARMerchantLookupFailedByUsername, err)
+		err1.Log()
+		return nil, err1
+	}
+
+	return m, nil
 }
 
-// Gets all the merchants registered in the database
-func GetMerchants(Db *gorm.DB) ([]merchant.Merchant, error) {
+// GetMerchants retrieves a paginated list of merchants registered in the database.
+// - limit: The maximum number of records to return (e.g., 5)
+// - offset: The number of records to skip before starting to return (e.g., 0 for the first page)
+func GetMerchants(Db *gorm.DB, limit int, offset int) ([]merchant.Merchant, error) {
+	var merchants []*Merchant
 
-    var merchants []*Merchant
+	// Find all records with limit and offset applied
+	if err := Db.Limit(limit).Offset(offset).Find(&merchants).Error; err != nil {
+		// Db.Find only returns an error on connection or query issue, not if the table is empty.
+		err1 := errors.New(errors.EARMerchantListRetrievalFailed, err)
+		err1.Log()
+		return nil, err1
+	}
 
-    // Find all records
-    if err := Db.Find(&merchants).Error; err != nil {
-        // Db.Find only returns an error on connection or query issue, not if the table is empty.
-        return nil, ErrDBLookupFailure("Failed to retrieve list of all merchants.", err)
-    }
+	// Transform [](*Merchant) to []merchant.Merchant
+	var merchantlist []merchant.Merchant
+	for _, m := range merchants {
+		merchantlist = append(merchantlist, m)
+	}
 
-    // Transform [](*Merchant) to []merchant.Merchant
-    var merchantlist []merchant.Merchant
-    for _, m := range merchants {
-        merchantlist = append(merchantlist, m)
-    }
-
-    return merchantlist, nil
+	return merchantlist, nil
 }
