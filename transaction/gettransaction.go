@@ -1,78 +1,140 @@
 package transaction
 
 import (
-	"errors"
-	"fmt"
+	pgerror "errors"
+	"time"
 
+	"github.com/GigaDesk/eardrum-interfaces/errors"
 	"github.com/GigaDesk/eardrum-interfaces/transaction"
 	"gorm.io/gorm"
 )
 
-// Gets a transaction by its unique id
-func GetTransactionWithId(Db *gorm.DB, Id int) (transaction.Transaction, error) {
-    var transaction *Transaction
-    //fetch the record from the database
-    if err := Db.First(&transaction, Id).Error; err != nil {
-        // Allow gorm.ErrRecordNotFound to be returned for 404 mapping at the service layer.
-        if errors.Is(err, gorm.ErrRecordNotFound) {
-            return nil, err
-        }
-        // General DB lookup failure -> 500 Internal Server Error
-        return nil, ErrDBLookupFailure(fmt.Sprintf("Failed to retrieve transaction with ID %d.", Id), err)
-    }
-
-    return transaction, nil
+// GetTransactionByReference gets a transaction by its 12-character TransactionID string.
+func GetTransactionByReference(Db *gorm.DB, transactionID string) (transaction.Transaction, error) {
+	var tx Transaction
+	if err := Db.Where("transaction_id = ?", transactionID).First(&tx).Error; err != nil {
+		if pgerror.Is(err, gorm.ErrRecordNotFound) {
+			err1 := errors.New(errors.EARFileNotFound, err)
+			err1.Log()
+			return nil, err
+		}
+		err1 := errors.New(errors.EARInternalError, err)
+		err1.Log()
+		return nil, err1
+	}
+	return tx, nil
 }
 
-// Gets all the transactions registered in the database
-func GetTransactions(Db *gorm.DB) ([]transaction.Transaction, error) {
+// GetTransactions retrieves all transactions with optional pagination and timestamp filters.
+func GetTransactions(Db *gorm.DB, limit *int, offset *int, startTime *time.Time, endTime *time.Time) ([]transaction.Transaction, error) {
+	var txs []Transaction
+	query := Db.Order("created_at desc")
 
-    var transactions []*Transaction
+	// Apply optional timestamp filters
+	if startTime != nil {
+		query = query.Where("created_at >= ?", *startTime)
+	}
+	if endTime != nil {
+		query = query.Where("created_at <= ?", *endTime)
+	}
 
-    if err := Db.Order("created_at desc").Find(&transactions).Error; err != nil {
-        // General DB lookup failure -> 500 Internal Server Error
-        return nil, ErrDBLookupFailure("Failed to retrieve all transactions.", err)
-    }
+	// Apply optional pagination
+	if limit != nil && *limit > 0 {
+		query = query.Limit(*limit)
+	} else {
+		query = query.Limit(10) // Safe default
+	}
 
-    var transactionslist []transaction.Transaction
+	if offset != nil && *offset > 0 {
+		query = query.Offset(*offset)
+	}
 
-    for _, t := range transactions {
-        transactionslist = append(transactionslist, t)
-    }
+	if err := query.Find(&txs).Error; err != nil {
+		err1 := errors.New(errors.EARInternalError, err)
+		err1.Log()
+		return nil, err1
+	}
 
-    return transactionslist, nil
+	var transactionslist []transaction.Transaction
+	for _, t := range txs {
+		transactionslist = append(transactionslist, t)
+	}
+
+	return transactionslist, nil
 }
 
-// GetTransactionsForUser retrieves all transactions for a specific user.
-// It leverages the foreign key relationship to filter the results.
-func GetTransactionsForUser(db *gorm.DB, userID uint) ([]transaction.Transaction, error) {
-    var transactions []Transaction
-    // GORM automatically filters on the UserID foreign key.
-    if err := db.Where("user_id = ?", userID).Order("created_at desc").Find(&transactions).Error; err != nil {
-        // General DB lookup failure -> 500 Internal Server Error
-        return nil, ErrDBLookupFailure(fmt.Sprintf("Failed to retrieve transactions for user ID %d.", userID), err)
-    }
-    var transactionslist []transaction.Transaction
+// GetTransactionsForUser retrieves all transactions for a specific user with optional pagination and timestamp filters.
+func GetTransactionsForUser(db *gorm.DB, username string, limit *int, offset *int, startTime *time.Time, endTime *time.Time) ([]transaction.Transaction, error) {
+	var txs []Transaction
+	query := db.Where("user_user_name = ?", username).Order("created_at desc")
 
-    for _, t := range transactions {
-        transactionslist = append(transactionslist, t)
-    }
+	// Apply optional timestamp filters
+	if startTime != nil {
+		query = query.Where("created_at >= ?", *startTime)
+	}
+	if endTime != nil {
+		query = query.Where("created_at <= ?", *endTime)
+	}
 
-    return transactionslist, nil
+	// Apply optional pagination
+	if limit != nil && *limit > 0 {
+		query = query.Limit(*limit)
+	} else {
+		query = query.Limit(10)
+	}
+
+	if offset != nil && *offset > 0 {
+		query = query.Offset(*offset)
+	}
+
+	if err := query.Find(&txs).Error; err != nil {
+		err1 := errors.New(errors.EARInternalError, err)
+		err1.Log()
+		return nil, err1
+	}
+
+	var transactionslist []transaction.Transaction
+	for _, t := range txs {
+		transactionslist = append(transactionslist, t)
+	}
+
+	return transactionslist, nil
 }
 
-// GetTransactionsForMerchant retrieves all transactions for a specific merchant.
-func GetTransactionsForMerchant(db *gorm.DB, merchantID uint) ([]transaction.Transaction, error) {
-    var transactions []Transaction
-    if err := db.Where("merchant_id = ?", merchantID).Order("created_at desc").Find(&transactions).Error; err != nil {
-        // General DB lookup failure -> 500 Internal Server Error
-        return nil, ErrDBLookupFailure(fmt.Sprintf("Failed to retrieve transactions for merchant ID %d.", merchantID), err)
-    }
-    var transactionslist []transaction.Transaction
+// GetTransactionsForMerchant retrieves all transactions for a specific merchant with optional pagination and timestamp filters.
+func GetTransactionsForMerchant(db *gorm.DB, merchantname string, limit *int, offset *int, startTime *time.Time, endTime *time.Time) ([]transaction.Transaction, error) {
+	var txs []Transaction
+	query := db.Where("merchant_user_name = ?", merchantname).Order("created_at desc")
 
-    for _, t := range transactions {
-        transactionslist = append(transactionslist, t)
-    }
+	// Apply optional timestamp filters
+	if startTime != nil {
+		query = query.Where("created_at >= ?", *startTime)
+	}
+	if endTime != nil {
+		query = query.Where("created_at <= ?", *endTime)
+	}
 
-    return transactionslist, nil
+	// Apply optional pagination
+	if limit != nil && *limit > 0 {
+		query = query.Limit(*limit)
+	} else {
+		query = query.Limit(10)
+	}
+
+	if offset != nil && *offset > 0 {
+		query = query.Offset(*offset)
+	}
+
+	if err := query.Find(&txs).Error; err != nil {
+		err1 := errors.New(errors.EARInternalError, err)
+		err1.Log()
+		return nil, err1
+	}
+
+	var transactionslist []transaction.Transaction
+	for _, t := range txs {
+		transactionslist = append(transactionslist, t)
+	}
+
+	return transactionslist, nil
 }
