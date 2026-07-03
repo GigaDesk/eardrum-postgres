@@ -1,105 +1,128 @@
 package transaction
 
 import (
-	customErrors "github.com/GigaDesk/eardrum-interfaces/errors"
-	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
-	"gorm.io/gorm"
+    pgerror "errors"
+    "os"
+    "strconv"
+    "github.com/GigaDesk/eardrum-interfaces/errors"
+    "github.com/google/uuid"
+    "github.com/rs/zerolog/log"
+    "gorm.io/gorm"
+    
+    "github.com/GigaDesk/eardrum-postgres/user" 
 )
 
-func PartialToFullUuid(db *gorm.DB, partialScan string, inputPin string, checkPIN func(hashedPIN, PIN string) error) (uuid.UUID, *customErrors.PublicError) {
-	if len(partialScan) < 10 {
-		return uuid.Nil, NewAccountNotFoundError("Invalid QR code. Please scan again")
-	}
+// FacialMatchThreshold is resolved dynamically from the environment.
+// Fallback default is set to 0.75 if FACIAL_MATCH_THRESHOLD is unset or invalid.
+var FacialMatchThreshold float32 = getEnvAsFloat32("FACIAL_MATCH_THRESHOLD", 0.75)
 
-	// 1. Fetch candidates WITH their similarity scores
-	type candidate struct {
-		QrCode  uuid.UUID
-		PinCode string
-		Score   float32 `gorm:"column:score"`
-	}
-	var results []candidate
+func PartialToFullUuid(db *gorm.DB, partialScan string, facialEmbedding string) (uuid.UUID, *errors.PublicError) {
+    if len(partialScan) < 10 {
+        err := errors.New(errors.EARTxUserAccountNotFound, pgerror.New("Invalid QR code. Please scan again"))
+        err.Log()
+        return uuid.Nil, err
+    }
 
-	err := db.Transaction(func(tx *gorm.DB) error {
-		tx.Exec("SET LOCAL pg_trgm.word_similarity_threshold = 0.6")
-		// We explicitly SELECT the similarity score for logging purposes
-		return tx.Raw(`
-			SELECT qr_code, pin_code, word_similarity(?, qr_code::text) as score 
-			FROM users 
-			WHERE ? <% qr_code::text 
-			ORDER BY score DESC`, partialScan, partialScan).Scan(&results).Error
-	})
+    // 1. Fetch candidates matching the fuzzy QR code criteria
+    type candidate struct {
+        user.User
+        Score float32 `gorm:"column:score"`
+    }
+    var results []candidate
 
-	if err != nil {
-		return uuid.Nil, ErrDBPersistenceFailure(err)
-	}
+    err := db.Transaction(func(tx *gorm.DB) error {
+        tx.Exec("SET LOCAL pg_trgm.word_similarity_threshold = 0.6")
+        return tx.Raw(`
+            SELECT *, word_similarity(?, qr_code::text) as score 
+            FROM users 
+            WHERE ? <% qr_code::text 
+            ORDER BY score DESC`, partialScan, partialScan).Scan(&results).Error
+    })
 
-	// LOG: Initial database results
-	dbLog := log.Info().Int("count", len(results)).Str("partial_scan", partialScan)
-	candidatesLog := []map[string]interface{}{}
-	for _, r := range results {
-		candidatesLog = append(candidatesLog, map[string]interface{}{
-			"qr": r.QrCode.String(), "pin": r.PinCode, "score": r.Score,
-		})
-	}
-	dbLog.Interface("db_candidates", candidatesLog).Msg("Fuzzy scan database results")
+    if err != nil {
+		err1 := errors.New(errors.EARInternalError, err)
+		err1.Log()
+        return uuid.Nil, err1
+    }
 
-	// 2. Mapping and Disqualification logic
-	finalMap := make(map[string]candidate) // Changed to store struct to keep score
-	disqualified := make(map[string]candidate)
-	subsequencePassed := []map[string]interface{}{}
+    // 2. Filter by strict subsequence AND collect face matches
+    var matchingCandidates []candidate
+    subsequencePassed := []map[string]interface{}{}
 
-	for _, res := range results {
-		if isStrictSubsequence(partialScan, res.QrCode.String()) {
-			subsequencePassed = append(subsequencePassed, map[string]interface{}{
-				"qr": res.QrCode.String(), "pin": res.PinCode, "score": res.Score,
-			})
+    for _, res := range results {
+        if isStrictSubsequence(partialScan, res.QrCode.String()) {
+            subsequencePassed = append(subsequencePassed, map[string]interface{}{
+                "qr": res.QrCode.String(), "score": res.Score,
+            })
 
-			if _, exists := disqualified[res.PinCode]; exists {
-				continue
-			}
+            // Check if this user's face matches the scanned face using our env threshold
+            if res.User.MatchFace(facialEmbedding, FacialMatchThreshold) {
+                matchingCandidates = append(matchingCandidates, res)
+            }
+        }
+    }
 
-			if _, exists := finalMap[res.PinCode]; exists {
-				disqualified[res.PinCode] = res
-				delete(finalMap, res.PinCode)
-				continue
-			}
+    // LOG: Filter details
+    log.Info().
+        Interface("subsequence_passed", subsequencePassed).
+        Int("matching_faces_count", len(matchingCandidates)).
+        Float32("configured_threshold", FacialMatchThreshold).
+        Msg("Filter results executed")
 
-			finalMap[res.PinCode] = res
-		}
-	}
+    // 3. Collision and Disqualification Check
+    if len(matchingCandidates) == 0 {
+        log.Info().Str("input", partialScan).Msg("No accounts found matching both QR sequence and face profile")
+        err1 := errors.New(errors.EARTxUserAccountNotFound, pgerror.New("Invalid QR code or biometric match failed. Please try again"))
+		err1.Log()
+		return uuid.Nil, err1
+    }
 
-	// LOG: Subsequence and Disqualification
-	log.Info().
-		Interface("subsequence_passed", subsequencePassed).
-		Interface("disqualified_pins", disqualified).
-		Msg("Filter results")
+    if len(matchingCandidates) > 1 {
+        collisionLog := []string{}
+        for _, mc := range matchingCandidates {
+            collisionLog = append(collisionLog, mc.QrCode.String())
+        }
+        log.Warn().
+            Interface("colliding_uuids", collisionLog).
+            Msg("Security Disqualification: Facial embedding matched multiple candidates")
+            
+        return uuid.Nil, errors.New(errors.EARTxUserAccountNotFound, pgerror.New("Ambiguous match detected"))
+    }
 
-	// 3. Final Verification
-	for hashedPin, cand := range finalMap {
-		if err1 := checkPIN(hashedPin, inputPin); err1 == nil {
-			// LOG: Success
-			log.Info().
-				Str("qr", cand.QrCode.String()).
-				Float32("score", cand.Score).
-				Msg("Match found successfully")
-			return cand.QrCode, nil
-		}
-	}
+    // Exactly one clear match found
+    matchedUser := matchingCandidates[0]
+    log.Info().
+        Str("qr", matchedUser.QrCode.String()).
+        Float32("score", matchedUser.Score).
+        Msg("Single secure face match identified successfully")
 
-	// LOG: Failure
-	log.Info().Str("input", partialScan).Msg("Account not found after fuzzy check")
-	return uuid.Nil, NewAccountNotFoundError("Invalid QR code. Please scan again")
+    return matchedUser.QrCode, nil
 }
 
 // isStrictSubsequence checks if partial is a subset of full in the correct order
 func isStrictSubsequence(partial, full string) bool {
-	pIdx, fIdx := 0, 0
-	for pIdx < len(partial) && fIdx < len(full) {
-		if partial[pIdx] == full[fIdx] {
-			pIdx++
-		}
-		fIdx++
-	}
-	return pIdx == len(partial)
+    pIdx, fIdx := 0, 0
+    for pIdx < len(partial) && fIdx < len(full) {
+        if partial[pIdx] == full[fIdx] {
+            pIdx++
+        }
+        fIdx++
+    }
+    return pIdx == len(partial)
+}
+
+// Helper to look up an env variable and map it safely to a float32
+func getEnvAsFloat32(key string, defaultVal float32) float32 {
+    valueStr, exists := os.LookupEnv(key)
+    if !exists {
+        return defaultVal
+    }
+    
+    value, err := strconv.ParseFloat(valueStr, 32)
+    if err != nil {
+        log.Warn().Err(err).Str("key", key).Str("value", valueStr).Msg("Invalid env float format, using default fallback")
+        return defaultVal
+    }
+    
+    return float32(value)
 }
