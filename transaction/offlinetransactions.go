@@ -16,7 +16,7 @@ import (
 
 // ProcessOfflineTransactionsBatch processes a block of offline transactions atomically for multiple users.
 // Either all transactions succeed, or they all fail and roll back.
-func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offlineTxs []transaction.NewOfflineTransaction) ([]*Transaction, error) {
+func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offlineTxs []transaction.NewOfflineTransaction) ([]transaction.Transaction, error) {
 	feePercentageStr := os.Getenv("TRANSACTION_FEE_PERCENT")
 	feePercentage, err := strconv.ParseUint(feePercentageStr, 10, 64)
 	if err != nil {
@@ -74,7 +74,7 @@ func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offli
 	}
 	sort.Strings(distinctPhones)
 
-	var savedTransactions []*Transaction
+	var savedTransactions []transaction.Transaction
 
 	// 3. Begin atomic DB transaction
 	err = db.Transaction(func(tx *gorm.DB) error {
@@ -156,6 +156,7 @@ func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offli
 				err3.Log()
 				return err3
 			}
+
 
 			savedTransactions = append(savedTransactions, newTransaction)
 		}
