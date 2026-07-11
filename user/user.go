@@ -2,29 +2,30 @@ package user
 
 import (
 	"encoding/base64"
-	"log"
-	"time"
 	"encoding/binary"
+	"log"
 	"math"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/skip2/go-qrcode"
 	"gorm.io/gorm"
-    "github.com/lib/pq"
 )
 
 // User represents the customer model for the system.
 type User struct {
-    gorm.Model
-    UserName              string         `gorm:"uniqueIndex;not null"` // Unique Username of the user
-    PhoneNumber           string `gorm:"uniqueIndex;not null"` // Unique Phone number of the user
-    Password              string `gorm:"not null"` // The user's password. It should be stored as a secure hash.
-    AccountBalanceInCents uint   `gorm:"not null;default:0"`  // The user's account balance in cents
-    PinCode               *string   `gorm:""` // The user's security PIN code (can be NULL). Must be stored as a secure hash.
-	QrCode                uuid.UUID `gorm:"uniqueIndex;type:uuid"` // The user's unique Qr Code
-    FacialEmbeddings      pq.StringArray `gorm:"type:text[]"` // Stores array of base64 user facial embeddings
-    FacialImages          pq.StringArray `gorm:"type:text[]"` // Stores array of the user's facial image URLs
-    Passport              *string   `gorm:""` //Stores URL of the user's passport photo
+	gorm.Model
+	UserName                string         `gorm:"uniqueIndex;not null"`  // Unique Username of the user
+	PhoneNumber             string         `gorm:"uniqueIndex;not null"`  // Unique Phone number of the user
+	Password                string         `gorm:"not null"`              // The user's password. It should be stored as a secure hash.
+	AccountBalanceInCents   uint           `gorm:"not null;default:0"`    // The user's account balance in cents
+	OverdraftBalanceInCents uint           `gorm:"not null;default:0"`    // The user's overdraft account balance in cents
+	PinCode                 *string        `gorm:""`                      // The user's security PIN code (can be NULL). Must be stored as a secure hash.
+	QrCode                  uuid.UUID      `gorm:"uniqueIndex;type:uuid"` // The user's unique Qr Code
+	FacialEmbeddings        pq.StringArray `gorm:"type:text[]"`           // Stores array of base64 user facial embeddings
+	FacialImages            pq.StringArray `gorm:"type:text[]"`           // Stores array of the user's facial image URLs
+	Passport                *string        `gorm:""`                      //Stores URL of the user's passport photo
 }
 
 // Returns the creation timestamp of the user
@@ -57,6 +58,11 @@ func (u User) GetAccountBalanceInCents() int64 {
 	return int64(u.AccountBalanceInCents)
 }
 
+// Returns the user's overdraft account balance in cents
+func (u User) GetOverdraftBalanceInCents() int64 {
+	return int64(u.OverdraftBalanceInCents)
+}
+
 // Returns the security password of the user
 func (u User) GetPassword() string {
 	return u.Password
@@ -68,52 +74,52 @@ func (u User) GetPinCode() *string {
 }
 
 // GetQrCodeUUID returns the UUID stored in the QrCode field.
-func (u User) GetQrCodeUUID() uuid.UUID {
-    return u.QrCode
+func (u User) GetUUID() string {
+	return u.QrCode.String()
 }
 
 // GetQrCodeBase64 returns the Base64 string of the QR code image.
 // It generates a QR code image from the user's UUID and encodes it.
 func (u User) GetQrCodeBase64() string {
-    // Convert the UUID to a string
-    uuidStr := u.QrCode.String()
+	// Convert the UUID to a string
+	uuidStr := u.QrCode.String()
 
-    // Generate the QR code image as a PNG byte slice
-    // The size is set to 256 for a clear image.
-    png, err := qrcode.Encode(uuidStr, qrcode.Medium, 256)
-    if err != nil {
-        log.Printf("Error generating QR code for UUID %s: %v", uuidStr, err)
-        return "" // Return an empty string or handle the error as needed
-    }
+	// Generate the QR code image as a PNG byte slice
+	// The size is set to 256 for a clear image.
+	png, err := qrcode.Encode(uuidStr, qrcode.Medium, 256)
+	if err != nil {
+		log.Printf("Error generating QR code for UUID %s: %v", uuidStr, err)
+		return "" // Return an empty string or handle the error as needed
+	}
 
-    // Encode the PNG byte slice to a Base64 string
-    base64Str := base64.StdEncoding.EncodeToString(png)
-    return base64Str
+	// Encode the PNG byte slice to a Base64 string
+	base64Str := base64.StdEncoding.EncodeToString(png)
+	return base64Str
 }
 
 // GetFacialEmbeddings returns a pointer to a list of the user's facial embeddings
 func (u User) GetFacialEmbeddings() *[]string {
-    if u.FacialEmbeddings == nil {
-        return nil
-    }
-    // Cast pq.StringArray back to standard []string
-    embeddingsSlice := []string(u.FacialEmbeddings)
-    return &embeddingsSlice
+	if u.FacialEmbeddings == nil {
+		return nil
+	}
+	// Cast pq.StringArray back to standard []string
+	embeddingsSlice := []string(u.FacialEmbeddings)
+	return &embeddingsSlice
 }
 
 // GetFacialImages returns a pointer to a list of the user's facial images
 func (u User) GetFacialImages() *[]string {
-    if u.FacialImages == nil {
-        return nil
-    }
-    // Cast pq.StringArray back to standard []string
-    imagesSlice := []string(u.FacialImages)
-    return &imagesSlice
+	if u.FacialImages == nil {
+		return nil
+	}
+	// Cast pq.StringArray back to standard []string
+	imagesSlice := []string(u.FacialImages)
+	return &imagesSlice
 }
 
 // GetPassport returns the pointer to the passport string
 func (u User) GetPassport() *string {
-    return u.Passport
+	return u.Passport
 }
 
 // MatchFace takes an incoming base64 embedding and matches it against the user's saved embeddings.
@@ -187,15 +193,16 @@ func cosineSimilarity(vecA, vecB []float32) float32 {
 // UnverifiedUser represents the unverified customer model for the system.
 type UnverifiedUser struct {
 	gorm.Model
-	UserName              string         `gorm:"uniqueIndex;not null"` // Unique Username of the unverified user
-	PhoneNumber           string         `gorm:"uniqueIndex;not null"` // Unique Phone number of the unverified user
-	Password              string         `gorm:"not null"`             // The user's password. It should be stored as a secure hash.
-	AccountBalanceInCents uint           `gorm:"not null;default:0"`   // The user's account balance in cents
-	PinCode               *string        `gorm:""`                     // The user's security PIN code (can be NULL). Must be stored as a secure hash.
-	QrCode                uuid.UUID      `gorm:"uniqueIndex;type:uuid"` // The user's unique Qr Code
-	FacialEmbeddings      pq.StringArray `gorm:"type:text[]"`          // Stores array of base64 user facial embeddings
-	FacialImages          pq.StringArray `gorm:"type:text[]"`          // Stores array of the user's facial image URLs
-	Passport              *string        `gorm:""`                     // Stores URL of the user's passport photo
+	UserName                string         `gorm:"uniqueIndex;not null"`  // Unique Username of the unverified user
+	PhoneNumber             string         `gorm:"uniqueIndex;not null"`  // Unique Phone number of the unverified user
+	Password                string         `gorm:"not null"`              // The user's password. It should be stored as a secure hash.
+	AccountBalanceInCents   uint           `gorm:"not null;default:0"`    // The user's account balance in cents
+	OverdraftBalanceInCents uint           `gorm:"not null;default:0"`    // The user's overdraft account balance in cents
+	PinCode                 *string        `gorm:""`                      // The user's security PIN code (can be NULL). Must be stored as a secure hash.
+	QrCode                  uuid.UUID      `gorm:"uniqueIndex;type:uuid"` // The user's unique Qr Code
+	FacialEmbeddings        pq.StringArray `gorm:"type:text[]"`           // Stores array of base64 user facial embeddings
+	FacialImages            pq.StringArray `gorm:"type:text[]"`           // Stores array of the user's facial image URLs
+	Passport                *string        `gorm:""`                      // Stores URL of the user's passport photo
 }
 
 // Returns the creation timestamp of the unverified user
@@ -228,6 +235,11 @@ func (u UnverifiedUser) GetAccountBalanceInCents() int64 {
 	return int64(u.AccountBalanceInCents)
 }
 
+// Returns the unverified user's overdraft account balance in cents
+func (u UnverifiedUser) GetOverdraftBalanceInCents() int64 {
+	return int64(u.OverdraftBalanceInCents)
+}
+
 // Returns the security password of the unverified user
 func (u UnverifiedUser) GetPassword() string {
 	return u.Password
@@ -239,8 +251,8 @@ func (u UnverifiedUser) GetPinCode() *string {
 }
 
 // GetQrCodeUUID returns the UUID stored in the QrCode field.
-func (u UnverifiedUser) GetQrCodeUUID() uuid.UUID {
-	return u.QrCode
+func (u UnverifiedUser) GetUUID() string {
+	return u.QrCode.String()
 }
 
 // GetQrCodeBase64 returns the Base64 string of the QR code image.

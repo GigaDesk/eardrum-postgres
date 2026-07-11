@@ -52,6 +52,7 @@ func VerifyUser(phoneNumber string, Db *gorm.DB) (verifiedUser user.User, finalE
 		PhoneNumber:           unverifieduser.PhoneNumber,
 		Password:              unverifieduser.Password,
 		AccountBalanceInCents: unverifieduser.AccountBalanceInCents,
+		OverdraftBalanceInCents: unverifieduser.OverdraftBalanceInCents,
 		PinCode:               unverifieduser.PinCode,
 		QrCode:                unverifieduser.QrCode,
 	}
