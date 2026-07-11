@@ -174,3 +174,6 @@ func ProcessTransaction(db *gorm.DB, merchantUsername string, newTx transaction.
 
 	return newTransaction, nil
 }
+
+
+
