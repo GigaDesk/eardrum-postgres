@@ -76,3 +76,5 @@ func GetUsers(Db *gorm.DB, limit int, offset int) ([]user.User, error) {
 
     return userslist, nil
 }
+
+
