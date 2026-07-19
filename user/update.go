@@ -7,6 +7,7 @@ import (
     "github.com/GigaDesk/eardrum-interfaces/user"
     "gorm.io/gorm"
     "github.com/lib/pq"
+    "github.com/GigaDesk/eardrum-prefix/validate"
 )
 
 // UpdatePassword updates the user's password using their username.
@@ -65,6 +66,15 @@ func UpdatePinCode(Db *gorm.DB, encryptedpincode string, username string) (user.
 
 // UpdateFacialEmbeddings updates the user's facial embeddings using their username.
 func UpdateFacialEmbeddings(Db *gorm.DB, embeddings []string, username string) (user.User, error) {
+    
+    //Validate embeddings
+    for _, embedding:=range embeddings{
+        _, err:=validate.ValidateMobileFaceNetEmbeddingB64(embedding, false)
+        if err!=nil{
+            return nil, err
+        }
+    }
+   
     // 1. Fetch the user using the existing helper function
     u, err := GetUserWithUsername(Db, username)
     if err != nil {
