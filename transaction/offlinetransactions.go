@@ -12,6 +12,7 @@ import (
 	"github.com/GigaDesk/eardrum-postgres/user"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"github.com/rs/zerolog/log"
 )
 
 // ProcessOfflineTransactionsBatch processes a block of offline transactions atomically for multiple users.
@@ -35,8 +36,12 @@ func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offli
 
 	for _, offlineTx := range offlineTxs {
 		phone := offlineTx.GetPhoneNumber()
+
+        
 		totalAmount := offlineTx.GetTotalAmountInCents()
-		
+
+		log.Info().Str("phonenumber", phone).Int("amount_in_cents", int(totalAmount)).Msg("processing offline transaction")
+
 		if totalAmount <= 0 {
 			err3 := errors.New(errors.EARTxAmountMustBeGreaterThanZero, pgerror.New("Transaction amount must be greater than zero."))
 			err3.Log()
@@ -50,11 +55,15 @@ func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offli
 			return nil, err
 		}
 
+		log.Info().Str("username", u.GetUserName()).Str("phonenumber", u.GetPhoneNumber()).Msg("retrieved user for offfline transaction")
+
         if !u.MatchFace(offlineTx.GetFacialEmbedding(), FacialMatchThreshold) {
             err3 := errors.New(errors.EARTxInvalidAuthentication, pgerror.New("Facial mismatch for phone: "+phone))
             err3.Log()
             return nil, err3
         }
+
+		log.Info().Str("username", u.GetUserName()).Str("phonenumber", u.GetPhoneNumber()).Msg("facial match successful")
 
 		transactionCost := (totalAmount * uint(feePercentage)) / 100
 		finalDeduction := totalAmount + transactionCost
