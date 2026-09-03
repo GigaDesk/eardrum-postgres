@@ -18,7 +18,7 @@ import (
 // It validates credentials, processes the amount, updates accounts, and creates the
 // necessary database records securely within a single transaction.
 // checkPIN is a function passed as an argument to decouple logic.
-func ProcessTransaction(db *gorm.DB, merchantUsername string, newTx transaction.NewTransaction) (*Transaction, error) {
+func ProcessTransaction(db *gorm.DB, merchantUsername string, newTx transaction.NewTransaction) (transaction.Transaction, error) {
 	// We use GORM's built-in transaction helper to ensure all operations are
 	// either fully completed or fully rolled back if an error occurs.
 	var newTransaction *Transaction

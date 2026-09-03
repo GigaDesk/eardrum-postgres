@@ -40,6 +40,8 @@ github.com/GigaDesk/eardrum-interfaces v1.2.6 h1:6ispI4ob922uy7OSOgLc2W41t3nQAnH
 github.com/GigaDesk/eardrum-interfaces v1.2.6/go.mod h1:A0KRk2qrqKLDZfbpxea0h4Tz9XPYLrOL2TC0qGpGFKI=
 github.com/GigaDesk/eardrum-interfaces v1.2.8 h1:YotZiOcwRjhtgX7P5Ex1pwFVnzKXu4Wy4N4lHSIZfkw=
 github.com/GigaDesk/eardrum-interfaces v1.2.8/go.mod h1:A0KRk2qrqKLDZfbpxea0h4Tz9XPYLrOL2TC0qGpGFKI=
+github.com/GigaDesk/eardrum-prefix v1.0.4 h1:Npl8lw6UJlsPVGyZxiEjGguIg01Gmu0+ih2umDybG+A=
+github.com/GigaDesk/eardrum-prefix v1.0.4/go.mod h1:huVvrEE5UZi75nH5g39jzY3Bn85aAGeN044bnUqW6Ac=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=

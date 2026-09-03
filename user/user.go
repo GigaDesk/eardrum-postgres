@@ -144,7 +144,7 @@ func (u User) MatchFace(incomingB64 string, threshold float32) bool {
 
 		// 3. Calculate cosine similarity between the two vectors
 		similarity := cosineSimilarity(incomingVector, storedVector)
-
+        log.Println("similarity score: ", similarity)
 		// 4. Early Exit: If it clears the threshold, we have a match!
 		if similarity >= threshold {
 			return true

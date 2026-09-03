@@ -12,11 +12,12 @@ import (
 	"github.com/GigaDesk/eardrum-postgres/user"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"github.com/rs/zerolog/log"
 )
 
 // ProcessOfflineTransactionsBatch processes a block of offline transactions atomically for multiple users.
 // Either all transactions succeed, or they all fail and roll back.
-func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offlineTxs []transaction.NewOfflineTransaction) ([]*Transaction, error) {
+func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offlineTxs []transaction.NewOfflineTransaction) ([]transaction.Transaction, error) {
 	feePercentageStr := os.Getenv("TRANSACTION_FEE_PERCENT")
 	feePercentage, err := strconv.ParseUint(feePercentageStr, 10, 64)
 	if err != nil {
@@ -35,8 +36,12 @@ func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offli
 
 	for _, offlineTx := range offlineTxs {
 		phone := offlineTx.GetPhoneNumber()
+
+        
 		totalAmount := offlineTx.GetTotalAmountInCents()
-		
+
+		log.Info().Str("phonenumber", phone).Int("amount_in_cents", int(totalAmount)).Msg("processing offline transaction")
+
 		if totalAmount <= 0 {
 			err3 := errors.New(errors.EARTxAmountMustBeGreaterThanZero, pgerror.New("Transaction amount must be greater than zero."))
 			err3.Log()
@@ -50,11 +55,15 @@ func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offli
 			return nil, err
 		}
 
+		log.Info().Str("username", u.GetUserName()).Str("phonenumber", u.GetPhoneNumber()).Msg("retrieved user for offfline transaction")
+
         if !u.MatchFace(offlineTx.GetFacialEmbedding(), FacialMatchThreshold) {
             err3 := errors.New(errors.EARTxInvalidAuthentication, pgerror.New("Facial mismatch for phone: "+phone))
             err3.Log()
             return nil, err3
         }
+
+		log.Info().Str("username", u.GetUserName()).Str("phonenumber", u.GetPhoneNumber()).Msg("facial match successful")
 
 		transactionCost := (totalAmount * uint(feePercentage)) / 100
 		finalDeduction := totalAmount + transactionCost
@@ -74,7 +83,7 @@ func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offli
 	}
 	sort.Strings(distinctPhones)
 
-	var savedTransactions []*Transaction
+	var savedTransactions []transaction.Transaction
 
 	// 3. Begin atomic DB transaction
 	err = db.Transaction(func(tx *gorm.DB) error {
@@ -156,6 +165,7 @@ func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offli
 				err3.Log()
 				return err3
 			}
+
 
 			savedTransactions = append(savedTransactions, newTransaction)
 		}

@@ -2,9 +2,11 @@ package user
 
 import (
 	pgerror "errors" // Standard Go errors package
-	"gorm.io/gorm"
-	"github.com/GigaDesk/eardrum-interfaces/user"
+
 	"github.com/GigaDesk/eardrum-interfaces/errors"
+	"github.com/GigaDesk/eardrum-interfaces/user"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // GetUserWithPhoneNumber finds a user by phone number.
@@ -75,6 +77,40 @@ func GetUsers(Db *gorm.DB, limit int, offset int) ([]user.User, error) {
     }
 
     return userslist, nil
+}
+
+
+// GetUsersByUUIDs retrieves all users whose QrCode UUID matches any of the given UUIDs.
+// Returns a nil slice if no matching users are found or if the input slice is empty.
+func GetUsersByUUIDs(Db *gorm.DB, uuids []uuid.UUID) ([]user.User, error) {
+	// 1. Guard against empty input to prevent generating invalid SQL queries like `WHERE qr_code IN ()`
+	if len(uuids) == 0 {
+		return nil, nil
+	}
+
+	var users []*User
+
+	// 2. Query matching records using Postgres IN clause
+	if err := Db.Where("qr_code IN (?)", uuids).Find(&users).Error; err != nil {
+		err1 := errors.New(errors.EARUserListRetrievalFailed, err)
+		err1.Log()
+		return nil, err1
+	}
+
+	// 3. Pre-allocate capacity (0 length, len(users) capacity) so append starts at index 0 without pre-filling nil values
+	usersList := make([]user.User, 0, len(users))
+	for _, u := range users {
+		if u != nil {
+			usersList = append(usersList, u)
+		}
+	}
+
+	// 4. Return explicit nil if no matching users exist in the database
+	if len(usersList) == 0 {
+		return nil, nil
+	}
+
+	return usersList, nil
 }
 
 
