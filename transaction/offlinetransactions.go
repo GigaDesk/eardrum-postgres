@@ -156,7 +156,8 @@ func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offli
 				UserUserName:           phoneToUsername[offlineTx.GetPhoneNumber()],
 				MerchantUserName:       merchantUsername,
 				TotalAmountInCents:     totalAmount,
-				TransactionCostInCents: transactionCost,             
+				TransactionCostInCents: transactionCost,
+				ScanLog: offlineTx.GetScanLog(),             
 			}
 			newTransaction.CreatedAt = offlineTx.GetOfflineTimestamp()
 

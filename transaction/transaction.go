@@ -23,6 +23,9 @@ type Transaction struct {
 	// TransactionCostInCents is the cost of the transaction.
 	TransactionCostInCents uint `gorm:"not null"`
 
+	// ScanLog stores the base64-encoded image of the scan that authorized the transaction.
+	ScanLog string `gorm:"type:text"`
+
 	// UserUserName acts as the foreign key referencing the User's UserName.
 	UserUserName string `gorm:"not null"`
 
@@ -65,6 +68,11 @@ func (t Transaction) GetTotalAmountInCents() uint {
 // Returns the transaction cost in cents spent in the transaction
 func (t Transaction) GetTransactionCostInCents() uint {
 	return t.TransactionCostInCents
+}
+
+//Returns image of the scan that authorized transaction
+func(t Transaction) GetScanLog() string{
+	return t.ScanLog
 }
 
 // Returns the unique username of the merchant the transaction was made to. 🏪
