@@ -2,6 +2,9 @@ package transaction
 
 import (
 	"time"
+	"errors"
+	"strings"
+	"strconv"
 
 	"github.com/GigaDesk/eardrum-postgres/merchant"
 	"github.com/GigaDesk/eardrum-postgres/user"
@@ -16,6 +19,9 @@ type Transaction struct {
 
     // TransactionID is a 12-character reference code (e.g., 260627R8K4WX)
 	TransactionID string `gorm:"uniqueIndex;not null;type:varchar(12)"`
+
+	// OfflineTransactionID combines IMEI and Millisecond Unix Timestamp (e.g., 864209041234567_1773130225123)
+	OfflineTransactionID string `gorm:"uniqueIndex;type:varchar(36)"`
 
 	// TotalAmountInCents is the transaction amount, stored in cents.
 	TotalAmountInCents uint `gorm:"not null"`
@@ -122,4 +128,42 @@ func GenerateSecureSuffix(length int) (string, error) {
 // Helper block for type conversion safety
 func uintbyte(n int) byte {
 	return byte(n)
+}
+
+// GetTransactionUnixTimeStamp extracts the millisecond timestamp from the OfflineTransactionID
+// and returns both the raw int64 millisecond value and a UTC time.Time object.
+func (t Transaction) GetTransactionUnixTimeStamp() (int64, time.Time, error) {
+	if t.OfflineTransactionID == "" {
+		return 0, time.Time{}, errors.New("offline transaction ID is empty")
+	}
+
+	parts := strings.Split(t.OfflineTransactionID, "_")
+	if len(parts) < 2 {
+		return 0, time.Time{}, errors.New("invalid offline transaction ID format")
+	}
+
+	millis, err := strconv.ParseInt(parts[1], 10, 64)
+	if err != nil {
+		return 0, time.Time{}, errors.New("failed to parse millisecond timestamp: " + err.Error())
+	}
+
+	// Convert milliseconds to time.Time and explicitly enforce UTC location
+	txTime := time.Unix(millis/1000, (millis%1000)*1000000).UTC()
+
+	return millis, txTime, nil
+}
+
+
+// GetTransactionDeviceIMEI extracts the device IMEI from the OfflineTransactionID.
+func (t Transaction) GetTransactionDeviceIMEI() (string, error) {
+	if t.OfflineTransactionID == "" {
+		return "", errors.New("offline transaction ID is empty")
+	}
+
+	parts := strings.Split(t.OfflineTransactionID, "_")
+	if len(parts) < 2 || parts[0] == "" {
+		return "", errors.New("invalid offline transaction ID format")
+	}
+
+	return parts[0], nil
 }

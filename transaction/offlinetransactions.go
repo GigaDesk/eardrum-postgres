@@ -2,6 +2,7 @@ package transaction
 
 import (
 	pgerror "errors"
+	"fmt"
 	"os"
 	"sort"
 	"strconv"
@@ -10,9 +11,9 @@ import (
 	"github.com/GigaDesk/eardrum-interfaces/transaction"
 	"github.com/GigaDesk/eardrum-postgres/merchant"
 	"github.com/GigaDesk/eardrum-postgres/user"
+	"github.com/rs/zerolog/log"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-	"github.com/rs/zerolog/log"
 )
 
 // ProcessOfflineTransactionsBatch processes a block of offline transactions atomically for multiple users.
@@ -28,7 +29,7 @@ func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offli
 
 	// 1. Pre-calculate totals per user to prevent multi-update deadlocks
 	type UserTotals struct {
-		TotalDeduction uint
+		TotalDeduction      uint
 		TotalMerchantCredit uint
 	}
 	userDeductions := make(map[string]*UserTotals)
@@ -37,31 +38,34 @@ func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offli
 	for _, offlineTx := range offlineTxs {
 		phone := offlineTx.GetPhoneNumber()
 
-        
 		totalAmount := offlineTx.GetTotalAmountInCents()
 
 		log.Info().Str("phonenumber", phone).Int("amount_in_cents", int(totalAmount)).Msg("processing offline transaction")
 
 		if totalAmount <= 0 {
 			err3 := errors.New(errors.EARTxAmountMustBeGreaterThanZero, pgerror.New("Transaction amount must be greater than zero."))
+			// Append the OfflineTransactionID to the error message
+            err3.Message = fmt.Sprintf("%s [tx_id=%v]", err3.Message, offlineTx.GetOfflineTransactionID())
 			err3.Log()
 			return nil, err3
 		}
 
 		// --- FACE MATCH VERIFICATION ---
 
-		u , err := user.GetUserWithPhoneNumber(db, phone)
-		if err!=nil{
+		u, err := user.GetUserWithPhoneNumber(db, phone)
+		if err != nil {
 			return nil, err
 		}
 
 		log.Info().Str("username", u.GetUserName()).Str("phonenumber", u.GetPhoneNumber()).Msg("retrieved user for offfline transaction")
 
-        if !u.MatchFace(offlineTx.GetFacialEmbedding(), FacialMatchThreshold) {
-            err3 := errors.New(errors.EARTxInvalidAuthentication, pgerror.New("Facial mismatch for phone: "+phone))
-            err3.Log()
-            return nil, err3
-        }
+		if !u.MatchFace(offlineTx.GetFacialEmbedding(), FacialMatchThreshold) {
+			err3 := errors.New(errors.EARTxInvalidAuthentication, pgerror.New("Facial mismatch for phone: "+phone))
+			// Append the OfflineTransactionID to the error message
+            err3.Message = fmt.Sprintf("%s [tx_id=%v]", err3.Message, offlineTx.GetOfflineTransactionID())
+			err3.Log()
+			return nil, err3
+		}
 
 		log.Info().Str("username", u.GetUserName()).Str("phonenumber", u.GetPhoneNumber()).Msg("facial match successful")
 
@@ -87,7 +91,7 @@ func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offli
 
 	// 3. Begin atomic DB transaction
 	err = db.Transaction(func(tx *gorm.DB) error {
-		
+
 		// Map to keep track of loaded usernames for the final transaction record step
 		phoneToUsername := make(map[string]string)
 
@@ -99,6 +103,7 @@ func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offli
 				First(&u).Error; err != nil {
 				if pgerror.Is(err, gorm.ErrRecordNotFound) {
 					err3 := errors.New(errors.EARTxUserAccountNotFound, err)
+					err3.Message = fmt.Sprintf("%s [phone=%s]", err3.Message, phone)
 					err3.Log()
 					return err3
 				}
@@ -132,10 +137,12 @@ func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offli
 			First(&s, "user_name = ?", merchantUsername).Error; err != nil {
 			if pgerror.Is(err, gorm.ErrRecordNotFound) {
 				err3 := errors.New(errors.EARTxMerchantAccountNotFound, err)
+				err3.Message = fmt.Sprintf("%s [merchant_username=%s]", err3.Message, merchantUsername)
 				err3.Log()
 				return err3
 			}
 			err3 := errors.New(errors.EARMerchantLookupFailedByUsername, err)
+			err3.Message = fmt.Sprintf("%s [merchant_username=%s]", err3.Message, merchantUsername)
 			err3.Log()
 			return err3
 		}
@@ -157,16 +164,18 @@ func ProcessOfflineTransactionsBatch(db *gorm.DB, merchantUsername string, offli
 				MerchantUserName:       merchantUsername,
 				TotalAmountInCents:     totalAmount,
 				TransactionCostInCents: transactionCost,
-				ScanLog: offlineTx.GetScanLog(),             
+				ScanLog:                offlineTx.GetScanLog(),
+				OfflineTransactionID:   offlineTx.GetOfflineTransactionID(),
 			}
 			newTransaction.CreatedAt = offlineTx.GetOfflineTimestamp()
 
 			if err := tx.Create(newTransaction).Error; err != nil {
 				err3 := errors.New(errors.EARInternalError, err)
+				// Append the OfflineTransactionID to the error message
+				err3.Message = fmt.Sprintf("%s [tx_id=%s]", err3.Message, newTransaction.OfflineTransactionID)
 				err3.Log()
 				return err3
 			}
-
 
 			savedTransactions = append(savedTransactions, newTransaction)
 		}
