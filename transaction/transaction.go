@@ -20,7 +20,7 @@ type Transaction struct {
     // TransactionID is a 12-character reference code (e.g., 260627R8K4WX)
 	TransactionID string `gorm:"uniqueIndex;not null;type:varchar(12)"`
 
-	// OfflineTransactionID combines IMEI and Millisecond Timestamp (e.g., 864209041234567_1773130225123)
+	// OfflineTransactionID combines IMEI and Millisecond Unix Timestamp (e.g., 864209041234567_1773130225123)
 	OfflineTransactionID string `gorm:"uniqueIndex;type:varchar(36)"`
 
 	// TotalAmountInCents is the transaction amount, stored in cents.
