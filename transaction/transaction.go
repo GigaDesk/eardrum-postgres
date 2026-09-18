@@ -167,3 +167,8 @@ func (t Transaction) GetTransactionDeviceIMEI() (string, error) {
 
 	return parts[0], nil
 }
+
+//GetTransactionDeviceModel returns the model of the device that processed transaction
+func(t Transaction) GetTransactionDeviceModel() *string{
+	return nil
+}
