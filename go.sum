@@ -44,6 +44,10 @@ github.com/GigaDesk/eardrum-interfaces v1.2.9 h1:6NFTkG0fpu8L2JLueHIknf3zp12mB9s
 github.com/GigaDesk/eardrum-interfaces v1.2.9/go.mod h1:A0KRk2qrqKLDZfbpxea0h4Tz9XPYLrOL2TC0qGpGFKI=
 github.com/GigaDesk/eardrum-interfaces v1.3.0 h1:/NNZYzaZrdrvnTRpb2/mgGs4NrqQ9SoItI1OFIMXuUM=
 github.com/GigaDesk/eardrum-interfaces v1.3.0/go.mod h1:A0KRk2qrqKLDZfbpxea0h4Tz9XPYLrOL2TC0qGpGFKI=
+github.com/GigaDesk/eardrum-interfaces v1.3.1 h1:UFXd8xoAzxtzu8cvc26OzsEYX48zdbg9Bf+viI27wNg=
+github.com/GigaDesk/eardrum-interfaces v1.3.1/go.mod h1:A0KRk2qrqKLDZfbpxea0h4Tz9XPYLrOL2TC0qGpGFKI=
+github.com/GigaDesk/eardrum-interfaces v1.3.2 h1:pLdWS5rIgSeC8nkAPRI+jCb5ApGIrNUzsAwx5wQHgZY=
+github.com/GigaDesk/eardrum-interfaces v1.3.2/go.mod h1:A0KRk2qrqKLDZfbpxea0h4Tz9XPYLrOL2TC0qGpGFKI=
 github.com/GigaDesk/eardrum-prefix v1.0.4 h1:Npl8lw6UJlsPVGyZxiEjGguIg01Gmu0+ih2umDybG+A=
 github.com/GigaDesk/eardrum-prefix v1.0.4/go.mod h1:huVvrEE5UZi75nH5g39jzY3Bn85aAGeN044bnUqW6Ac=
 github.com/coreos/go-systemd/v22 v22.5.0/go.mod h1:Y58oyj3AT4RCenI/lSvhwexgC+NSVTIJ3seZv2GcEnc=
